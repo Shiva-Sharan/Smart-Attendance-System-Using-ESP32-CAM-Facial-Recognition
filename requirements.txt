@@ -1,0 +1,16 @@
+# Core Computer Vision & ML
+numpy==1.26.4
+onnxruntime==1.17.3
+
+# Image Processing
+Pillow==10.2.0
+
+# MQTT Communication
+paho-mqtt==1.6.1
+
+# Web Backend
+Flask==3.0.2
+Werkzeug==3.0.1
+
+# Optional (recommended utilities)
+imutils==0.5.4

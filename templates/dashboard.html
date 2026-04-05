@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Attendance Dashboard</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- TOP RIGHT -->
+  <div class="top-right">
+    <div class="user-info">
+      <span class="welcome-text">Welcome,</span>
+      <span class="username">{{ sid }}</span>
+    </div>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+
+  <!-- MAIN -->
+  <div class="dashboard-container">
+
+    <!-- LEFT : TABLE -->
+    <div class="card table-card">
+      <h2>Attendance Records</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Session</th>
+            <th>Status</th>
+            <th>Valid</th>
+          </tr>
+        </thead>
+        <tbody id="attendanceTable">
+          <!-- JS fills rows -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- RIGHT : PIE -->
+    <div class="card chart-card">
+      <h2>Attendance Percentage</h2>
+      <canvas id="attendanceChart"></canvas>
+
+      <div class="chart-info">
+        <div class="present-text">
+          Present: <span id="presentPercent">0%</span>
+        </div>
+        <div class="absent-text">
+          Absent: <span id="absentPercent">0%</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="{{ url_for('static', filename='main.js') }}"></script>
+</body>
+</html>

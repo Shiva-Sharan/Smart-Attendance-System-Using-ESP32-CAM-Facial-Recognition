@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance System | Complete</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* --- GLOBAL RESET --- */
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Segoe UI", sans-serif; }
+    body { background: #F8FAFC; color: #0F172A; overflow-x: hidden; }
+
+    /* Utility Class to hide sections */
+    .hidden { display: none !important; }
+
+    /* =========================================
+       1. LOGIN PAGE STYLES
+       (Scoped to #login-view to avoid conflicts)
+       ========================================= */
+    #login-view {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+      background: #111827; /* Fallback */
+    }
+
+    /* LEFT PANEL */
+    .left-panel {
+      flex: 60%;
+      background: #F59E0B;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .left-content {
+      max-width: 420px;
+      transition: transform 0.4s ease;
+      text-align: center; /* Center text alignment */
+    }
+
+    .left-content h1 {
+      font-size: 42px;
+      color: #1F2933;
+      margin-bottom: 12px;
+      transition: color 0.3s ease;
+    }
+
+    .left-content p {
+      font-size: 18px;
+      color: rgba(31,41,51,0.8);
+      transition: color 0.3s ease;
+    }
+
+    .left-content:hover { transform: scale(1.03); }
+    .left-content:hover h1 { color: #111827; }
+    .left-content:hover p { color: rgba(31,41,51,1); }
+
+    /* RIGHT PANEL */
+    .right-panel {
+      flex: 40%;
+      background: #111827;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* LOGIN CARD */
+    .login-card {
+      width: 340px;
+      padding: 32px;
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(14px);
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.25);
+      transition: transform 0.4s ease, box-shadow 0.4s ease;
+      text-align: center;
+    }
+
+    .login-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+    }
+
+    .login-card h2 { color: #FFFFFF; margin-bottom: 22px; }
+
+    .login-card input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 16px;
+      border-radius: 10px;
+      border: none;
+      outline: none;
+      background: rgba(255,255,255,0.18);
+      color: #FFFFFF;
+      font-size: 14px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+      transition: box-shadow 0.3s ease, background 0.3s ease;
+    }
+
+    .login-card input:hover, .login-card input:focus {
+      background: rgba(255,255,255,0.25);
+      box-shadow: inset 0 3px 6px rgba(0,0,0,0.5);
+    }
+    .login-card input::placeholder { color: rgba(255,255,255,0.7); }
+
+    .login-card button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      background: #F59E0B;
+      color: #1F2933;
+      font-weight: bold;
+      font-size: 15px;
+      cursor: pointer;
+      transition: transform 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease;
+    }
+
+    .login-card button:hover {
+      transform: scale(1.03);
+      box-shadow: 0 10px 24px rgba(245,158,11,0.6);
+      opacity: 0.95;
+    }
+
+    /* =========================================
+       2. DASHBOARD STYLES
+       ========================================= */
+    #dashboard-view {
+      position: relative;
+      min-height: 100vh;
+      width: 100%;
+    }
+
+    /* TOP RIGHT */
+    .top-right {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .welcome-text { font-size: 14px; color: #475569; }
+    .username { font-size: 22px; font-weight: 600; color: #F59E0B; }
+
+    /* LOGOUT */
+    .logout-btn {
+      background: transparent;
+      border: 1px solid #F59E0B;
+      color: #F59E0B;
+      padding: 4px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .logout-btn:hover { background: rgba(245,158,11,0.15); }
+
+    /* LAYOUT */
+    .dashboard-container {
+      display: flex;
+      padding: 80px 40px 40px;
+      gap: 30px;
+    }
+
+    /* CARD */
+    .card {
+      background: #ffffff;
+      border-radius: 18px;
+      border: 1px solid #E2E8F0;
+      padding: 24px;
+      transition: all 0.3s ease;
+    }
+    .card:hover { box-shadow: 0 12px 26px rgba(0,0,0,0.12); }
+    .card h2 { color: #F59E0B; margin-bottom: 16px; }
+
+    /* TABLE */
+    .table-card { flex: 65%; overflow-x: auto; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+    th, td { padding: 10px; text-align: center; }
+    thead { background: rgba(245,158,11,0.14); }
+    tbody tr { background: #ffffff; transition: all 0.25s ease; }
+    tbody tr:hover { box-shadow: 0 6px 14px rgba(0,0,0,0.15); transform: translateY(-2px); }
+    .status-present { color: #F59E0B; font-weight: 600; }
+    .status-absent { color: #DC2626; font-weight: 600; }
+
+    /* PIE */
+    .chart-card { flex: 35%; text-align: center; display: flex; flex-direction: column; align-items: center; }
+    .chart-box { width: 100%; max-width: 300px; } /* Constraint for Chart */
+    .chart-info { margin-top: 15px; }
+    .present-text { color: #F59E0B; font-weight: 600; }
+    .absent-text { color: #64748B; }
+
+    /* MOBILE RESPONSIVE */
+    @media (max-width: 900px) {
+      #login-view { flex-direction: column; }
+      .left-panel, .right-panel { flex: 50%; width: 100%; }
+      .dashboard-container { flex-direction: column; padding: 80px 20px 20px; }
+      .top-right { right: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="login-view">
+    <div class="left-panel">
+      <div class="left-content">
+        <h1>Welcome to Our Project</h1>
+        <p>Attendance System Using Face Recognition</p>
+      </div>
+    </div>
+
+    <div class="right-panel">
+      <div class="login-card">
+        <h2>Login</h2>
+        <form onsubmit="handleLogin(event)">
+            <input type="text" id="usernameInput" placeholder="Username" required>
+            <input type="password" id="passwordInput" placeholder="Password" required>
+            <button type="submit">Login</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div id="dashboard-view" class="hidden">
+    
+    <div class="top-right">
+      <div class="user-info">
+        <span class="welcome-text">Welcome,</span>
+        <span class="username" id="displayUsername">User</span>
+      </div>
+      <button class="logout-btn" onclick="handleLogout()">Logout</button>
+    </div>
+
+    <div class="dashboard-container">
+      
+      <div class="card table-card">
+        <h2>Attendance Records</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Session</th>
+              <th>Status</th>
+              <th>Valid</th>
+            </tr>
+          </thead>
+          <tbody id="attendanceTable">
+            </tbody>
+        </table>
+      </div>
+
+      <div class="card chart-card">
+        <h2>Attendance Percentage</h2>
+        <div class="chart-box">
+            <canvas id="attendanceChart"></canvas>
+        </div>
+
+        <div class="chart-info">
+          <div class="present-text">
+            Present: <span id="presentPercent">0%</span>
+          </div>
+          <div class="absent-text">
+            Absent: <span id="absentPercent">0%</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let chartInstance = null; // To store chart object
+
+    /* --- LOGIN FUNCTION (Connected to Flask API) --- */
+    async function handleLogin(event) {
+      event.preventDefault(); // Stop form reload
+
+      const user = document.getElementById("usernameInput").value;
+      const pass = document.getElementById("passwordInput").value;
+
+      try {
+        const response = await fetch('/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sid: user, pwd: pass })
+        });
+
+        const result = await response.json();
+
+        if(result.success) {
+          // 1. Set Username in Dashboard
+          document.getElementById("displayUsername").innerText = user;
+
+          // 2. Switch Screens
+          document.getElementById("login-view").classList.add("hidden");
+          document.getElementById("dashboard-view").classList.remove("hidden");
+
+          // 3. Fetch Real Data from Database
+          fetchAndRenderData();
+        } else {
+          alert(result.error); // Show error if invalid password/ID
+        }
+      } catch (error) {
+        console.error("Login request failed:", error);
+        alert("Server error. Please ensure Flask is running.");
+      }
+    }
+
+    /* --- LOGOUT FUNCTION (Connected to Flask API) --- */
+    async function handleLogout() {
+      try {
+        await fetch('/logout'); // Clear session on server
+        
+        // Switch Screens Back
+        document.getElementById("dashboard-view").classList.add("hidden");
+        document.getElementById("login-view").classList.remove("hidden");
+        
+        // Clear Inputs
+        document.getElementById("usernameInput").value = "";
+        document.getElementById("passwordInput").value = "";
+      } catch (error) {
+        console.error("Logout failed:", error);
+      }
+    }
+
+    /* --- FETCH & RENDER DATA --- */
+    async function fetchAndRenderData() {
+        try {
+            const response = await fetch('/attendance-data');
+            const data = await response.json();
+            
+            renderTable(data);
+            renderChart(data);
+        } catch (error) {
+            console.error("Failed to fetch attendance data:", error);
+        }
+    }
+
+    /* --- TABLE RENDER --- */
+    function renderTable(data) {
+      const table = document.getElementById("attendanceTable");
+      table.innerHTML = ""; // Clear old data
+
+      if (data.length === 0) {
+        table.innerHTML = `<tr><td colspan="4">No attendance records found.</td></tr>`;
+        return;
+      }
+
+      data.forEach(row => {
+        const statusClass = row.status === "Present" ? "status-present" : "status-absent";
+        const validIcon = row.valid === 1 ? "✔" : "❌";
+        
+        table.innerHTML += `
+          <tr>
+            <td>${row.date}</td>
+            <td>${row.session}</td>
+            <td class="${statusClass}">${row.status}</td>
+            <td>${validIcon}</td>
+          </tr>
+        `;
+      });
+    }
+
+    /* --- PIE CHART RENDER --- */
+    function renderChart(data) {
+      let presentDays = 0;
+      let absentDays = 0;
+
+      if (data.length > 0) {
+        presentDays = data.filter(d => d.status === "Present").length;
+        absentDays = data.length - presentDays;
+        
+        document.getElementById("presentPercent").innerText = Math.round((presentDays / data.length) * 100) + "%";
+        document.getElementById("absentPercent").innerText = Math.round((absentDays / data.length) * 100) + "%";
+      } else {
+        document.getElementById("presentPercent").innerText = "0%";
+        document.getElementById("absentPercent").innerText = "0%";
+      }
+
+      const ctx = document.getElementById("attendanceChart");
+
+      // Destroy old chart if exists to avoid glitches
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      chartInstance = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels: ["Present", "Absent"],
+          datasets: [{
+            data: [presentDays, absentDays],
+            backgroundColor: ["#F59E0B", "#CBD5E1"],
+            borderWidth: 0,
+            hoverOffset: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '60%',
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+    }
+  </script>
+
+</body>
+</html>

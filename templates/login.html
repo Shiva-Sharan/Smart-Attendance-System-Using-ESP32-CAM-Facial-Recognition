@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Attendance System | Login</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="container">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <div class="left-content">
+      <h1>Welcome to Our Project</h1>
+      <p>Attendance System Using Face Recognition</p>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="login-card">
+      <h2>Login</h2>
+
+      <form onsubmit="login(event)">
+        <input type="text" id="usernameInput" placeholder="Username" required>
+        <input type="password" id="passwordInput" placeholder="Password" required>
+
+        <p id="msg"></p>
+
+        <button type="submit">Login</button>
+      </form>
+
+    </div>
+  </div>
+
+</div>
+
+<script src="/static/main.js"></script>
+</body>
+</html>
