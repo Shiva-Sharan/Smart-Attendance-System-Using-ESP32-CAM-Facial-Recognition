@@ -84,9 +84,9 @@ Follow these steps to download the project to your system using Git:
 
 1. Open Command Prompt / Terminal
 2. Run the following command:
-
+```
 git clone https://github.com/Shiva-Sharan/Smart_Attendance_System_Using_Facial_Recognition_with_ESP32-CAM.git
-
+```
 3. Move into the project folder:
 
 cd Smart_Attendance_System_Using_Facial_Recognition_with_ESP32-CAM
