@@ -15,10 +15,10 @@ venv/
 *.onnx
 *.pkl
 *.whl
-
+*.data
 # Dataset
 Faces/
-models/
+
 
 # Logs
 *.log
