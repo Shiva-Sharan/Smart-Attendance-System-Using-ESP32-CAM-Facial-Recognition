@@ -256,24 +256,27 @@ http://localhost:5000
 
 ### System Architecture
 
-![Architecture](<img width="949" height="550" alt="Workflow" src="https://github.com/user-attachments/assets/0c3f075d-63c9-4284-b9d5-a25dd794fa2b" />
-)
+![Architecture](Images/Flowchart.png)
 
 ### Block Diagram
 
-![Block Diagram](<img width="914" height="353" alt="Block_Diagram" src="https://github.com/user-attachments/assets/6871c245-30cb-4709-9ca2-92861fd81f48" />
-)
+![Block Diagram](Images/Block_Diagram.png)
+
+### Workflow
+
+![Workflow](Images/Workflow.png)
 
 ### LCD Output
 
-![LCD](<img width="1440" height="1080" alt="image" src="https://github.com/user-attachments/assets/2cefd913-228d-469b-937b-ee08a784260f" />
-)
+![Output](Images/Output.png)
 
 ### Dashboard
-![Login Page](<img width="948" height="466" alt="Login_page" src="https://github.com/user-attachments/assets/1c11022c-2440-4711-a11c-a849cddac9d0" />
-)
-![Dashboard](<img width="778" height="433" alt="Dashboard" src="https://github.com/user-attachments/assets/0fdd031e-1ba2-403b-ad2c-f92a5764645f" />
-)
+
+![Dashboard](Images/Dashboard.png)
+
+### Login Page
+
+![Login](Images/Login_page.png)
 
 ## 🏁 Conclusion
 
@@ -289,11 +292,6 @@ Overall, this project highlights the practical application of modern technologie
 
 I hereby declare that this project titled **"Smart Attendance System using Facial Recognition with ESP32-CAM"** is an original work carried out by me as part of my academic project. All the sources of information and references used have been duly acknowledged.
 
----
-
-## 🙏 Acknowledgement
-
-I would like to express my sincere gratitude to my faculty members and mentors for their guidance and support throughout the development of this project. I also thank my institution for providing the necessary resources to successfully complete this work.
 
 ---
 
