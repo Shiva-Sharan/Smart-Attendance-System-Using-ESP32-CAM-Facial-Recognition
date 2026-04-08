@@ -36,18 +36,71 @@ ATTENDANCE_STATUS_PRESENT = "Present"
 MQTT_BROKER = "broker.hivemq.com"
 MQTT_PORT = 1883
 MQTT_LCD_TOPIC = "shiva_edgeid/lcd_display"
-ESP32_CAM_URL = "http://172.27.99.90:81/stream" # <-- REPLACE WITH YOUR ESP32 IP ADDRESS
+ESP32_CAM_URL = "http://192.168.1.11:8080/video" # <-- REPLACE WITH YOUR ESP32 IP ADDRESS
 ESP32_STREAM_TIMEOUT = 8.0
 ESP32_RECONNECT_DELAY = 1.0
 ESP32_CHUNK_SIZE = 4096
 ESP32_MAX_BUFFER_BYTES = 2 * 1024 * 1024
 FACE_DET_EVERY_N = 2
-GUI_REFRESH_MS = 16
+# GUI runs lighter to leave more CPU budget to inference.
+GUI_REFRESH_MS = 60
 DISPLAY_MAX_WIDTH = 960
 MQTT_RECONNECT_MIN_SEC = 1
 MQTT_RECONNECT_MAX_SEC = 8
 MQTT_PUBLISH_QOS = 1
 DB_QUEUE_MAX = 256
+
+# --- PERFORMANCE TUNING ---
+ENABLE_RUNTIME_DEBUG_LOGS = False
+ENABLE_LIGHTWEIGHT_PROFILING = False
+# Reduced logging cadence to lower print/I-O overhead in the hot loop.
+PERF_LOG_INTERVAL_SEC = 4.0
+NPU_TIMING_LOG_INTERVAL_SEC = 4.0
+NPU_INFERENCE_WARN_MS = 8.0
+# Slower adaptive cadence + stability hits prevents stride oscillation.
+ADAPTIVE_TUNING_INTERVAL_SEC = 1.2
+ADAPT_STABLE_HITS = 2
+ADAPT_SEVERE_LOW_DELTA = 2
+ADAPT_SEVERE_HIGH_DELTA = 3
+ADAPT_FPS_LOW = 25
+ADAPT_FPS_HIGH = 30
+DET_EVERY_N_MIN = max(1, FACE_DET_EVERY_N)
+DET_EVERY_N_MAX = 4
+LIVENESS_EVERY_N_MIN = 1
+LIVENESS_EVERY_N_MAX = 4
+RECOG_EVERY_N_MIN = 1
+RECOG_EVERY_N_MAX = 3
+# Push less frequently to GUI state dict to reduce lock contention.
+STATE_PUBLISH_EVERY_N = 2
+LIVENESS_CACHE_MAX_FRAMES = 3
+LIVENESS_CACHE_MAX_REUSE_FRAMES = 6
+# Reuse liveness decision when tiny face motion is detected.
+LIVENESS_MOTION_THUMB_SIZE = (24, 24)
+LIVENESS_MOTION_REUSE_DIFF_TH = 2.2
+LIVENESS_SKIP_AFTER_CONSEC_LIVE = 5
+LIVENESS_STABLE_SKIP_FRAMES = 3
+# Reuse recognition embedding when identity is stable and face motion is minimal.
+RECOG_MOTION_THUMB_SIZE = (20, 20)
+RECOG_MOTION_REUSE_DIFF_TH = 1.8
+RECOG_CACHE_MAX_REUSE_FRAMES = 6
+ID_STABLE_EXTRA_RECOG_SKIP = 1
+RECOG_SKIP_AFTER_ID_HITS = 5
+RECOG_STABLE_SKIP_FRAMES = 3
+# Re-evaluate blur on a cadence instead of every frame.
+BLUR_CHECK_EVERY_N = 3
+BRIGHTNESS_UPDATE_EVERY_N = 2
+FACE_STABLE_TRACK_AGE_MAX = 2
+FACE_STABLE_MOTION_PX = 4.0
+# Keep inference at source resolution (ESP32 QVGA) to preserve detail and avoid wasteful upscale compute.
+PROCESS_AT_SOURCE_RESOLUTION = True
+# Keep detector/crop behavior consistent with enrollment pipeline.
+FACE_DETECTOR_BACKEND = "onnx"  # auto|haar|onnx
+HAAR_SCALE_FACTOR = 1.1
+HAAR_MIN_NEIGHBORS = 5
+HAAR_MIN_FACE_PX = 28
+HAAR_MAX_CANDIDATES = 6
+# Flash control logic is not evaluated every frame to reduce CPU and HTTP churn.
+FLASH_UPDATE_EVERY_N = 3
 
 # --- THRESHOLDS ---
 # Fallback values; runtime values are calibrated from FACE_DB_PKL when possible.
@@ -55,10 +108,19 @@ SIM_ACCEPT_TH = 0.40        # fallback confident accept cutoff
 SIM_UNCERTAIN_TH = 0.62    # fallback uncertain cutoff
 SIM_MARGIN_TH = 0.035       # best must beat second-best by this margin
 AUTO_CALIBRATE_SIM = True
-ID_CONFIRM_FRAMES = 2       # require same confident identity this many times
+SIM_CALIBRATION_RELAX_OFFSET = 0.14
+SIM_ACCEPT_MIN = 0.54
+SIM_UNCERTAIN_MIN = 0.42
+SIM_ID_ACCEPT_SPREAD = 0.06
+ID_CONFIRM_FRAMES = 3       # require same confident identity this many times
+ENABLE_MATCH_SCORE_LOGS = False
+MATCH_LOG_INTERVAL_SEC = 0.5
 
 CROP_PADDING_RATIO = 1.25
 LIVENESS_THRESHOLD = 0.65
+LIVENESS_THRESHOLD_LOW_LIGHT = 0.60
+LIVENESS_THRESHOLD_FLASH = 0.58
+LIVENESS_THRESHOLD_NORMAL = LIVENESS_THRESHOLD
 
 MIN_FACE_RATIO = 0.12
 MAX_FACE_RATIO = 0.45
@@ -67,14 +129,53 @@ VOTE_WINDOW = 12
 VOTE_MIN_LIVE = 10
 MIN_CONSECUTIVE_LIVE = 8
 
-STRICT_WINDOW = 10
+STRICT_WINDOW = 6
 
 BASE_BLUR = 60.0
 LOW_LIGHT_WARN_TH = 55
-EXTREME_DARK_TH = 30  # only trigger flash in near pitch-black conditions
+# Flash controller thresholds and timing (tuned to avoid ON/OFF oscillation).
+LOW_LIGHT_THRESHOLD = 45.0
+FLASH_OFF_THRESHOLD = 55.0
+LIGHT_STATE_SMOOTH_ALPHA = 0.16
+LIGHT_STATE_LOW_ENTER = 52.0
+LIGHT_STATE_LOW_EXIT = 62.0
+LIGHT_SPIKE_DELTA = 14.0
+LIGHT_STATE_TRANSITION_SEC = 0.45
+FLASH_LIVENESS_STABILIZE_SEC = 1.10
+FLASH_ON_VALUE = 255
+FLASH_OFF_VALUE = 0
+FLASH_SMOOTH_ALPHA = 0.20
+FLASH_MIN_ON_SEC = 2.5
+FLASH_MIN_OFF_SEC = 1.0
+FLASH_SWITCH_COOLDOWN_SEC = 0.8
+FLASH_SETTLE_ON_SEC = 1.2
+FLASH_SETTLE_OFF_SEC = 0.8
+FLASH_DARK_DEBOUNCE_FRAMES = 5
+FLASH_BRIGHT_DEBOUNCE_FRAMES = 6
+FLASH_HTTP_TIMEOUT_SEC = 0.25
+FLASH_DEBUG_LOG_INTERVAL_SEC = 1.0
+FLASH_DECISION_LOG_INTERVAL_SEC = 0.4
+LIVENESS_LOG_INTERVAL_SEC = 1.0
+FACE_TIGHT_CROP_RATIO = 0.84
+FACE_DARK_MEAN_TH = 22.0
+FACE_BRIGHT_MEAN_TH = 225.0
+UNDEREXPOSED_PIXEL_TH = 20
+OVEREXPOSED_PIXEL_TH = 245
+FACE_DARK_RATIO_TH = 0.35
+FACE_BRIGHT_RATIO_TH = 0.22
 CLAHE_TH = 70
+# Run expensive CLAHE only when the face is extremely dark.
+CLAHE_EXTREME_TH = 58.0
+# Equalize under flash only when highlights are strongly elevated.
+FLASH_EQUALIZE_FACE_MEAN_TH = 95.0
 
-qnn = {"backend_path": "QnnHtp.dll"}
+qnn = {
+    "backend_path": "QnnHtp.dll",
+    "htp_performance_mode": "high_performance",
+    "rpc_control_latency": "low",
+}
+ORT_AVAILABLE_PROVIDERS = tuple(ort.get_available_providers())
+ORT_QNN_AVAILABLE = "QNNExecutionProvider" in ORT_AVAILABLE_PROVIDERS
 COOLDOWN_SET = set()
 cooldown_lock = Lock()
 stop_event = Event()
@@ -85,6 +186,12 @@ daily_init_cache_key = None
 cooldown_day_key = None
 
 cv2.setUseOptimized(True)
+cv2.setNumThreads(max(1, min(4, (os.cpu_count() or 1))))
+
+
+def runtime_debug_log(message):
+    if ENABLE_RUNTIME_DEBUG_LOGS:
+        print(message)
 
 # ==================================================
 # HARDWARE CONTROL FUNCTIONS (MQTT)
@@ -191,59 +298,204 @@ Thread(target=_lcd_publish_worker, daemon=True).start()
 ESP32_IP = urlsplit(ESP32_CAM_URL).hostname or ""
 ESP32_FLASH_BASE_URL = f"http://{ESP32_IP}" if ESP32_IP else ""
 flash_state_lock = Lock()
-flash_is_on = None
+flash_is_on = False
 flash_pending_state = None
-flash_request_in_flight = False
+flash_request_in_progress = False
+last_on_time = 0.0
+last_off_time = 0.0
+last_switch_time = 0.0
+ignore_brightness_until = 0.0
+flash_brightness_ema = None
+dark_frame_streak = 0
+bright_frame_streak = 0
+last_flash_debug_log = 0.0
+last_flash_decision_log = 0.0
 
 
-def _send_flash_request(turn_on):
-    global flash_request_in_flight, flash_is_on, flash_pending_state
+def _flash_log_decision(message, now=None):
+    global last_flash_decision_log
+    if not ENABLE_RUNTIME_DEBUG_LOGS:
+        return
+    if now is None:
+        now = time.time()
+    if (now - last_flash_decision_log) >= FLASH_DECISION_LOG_INTERVAL_SEC:
+        print(message)
+        last_flash_decision_log = now
+
+
+def _apply_flash_transition_locked(next_state, now):
+    global flash_is_on, flash_request_in_progress
+    global last_on_time, last_off_time, last_switch_time, ignore_brightness_until
+    global dark_frame_streak, bright_frame_streak
+
+    flash_is_on = next_state
+    flash_request_in_progress = True
+    last_switch_time = now
+
+    if next_state:
+        last_on_time = now
+        ignore_brightness_until = now + FLASH_SETTLE_ON_SEC
+        bright_frame_streak = 0
+    else:
+        last_off_time = now
+        ignore_brightness_until = now + FLASH_SETTLE_OFF_SEC
+        dark_frame_streak = 0
+
+
+def send_flash_request(turn_on: bool):
+    global flash_request_in_progress, flash_pending_state
+    global flash_is_on, last_switch_time
     if not ESP32_FLASH_BASE_URL:
         with flash_state_lock:
-            flash_request_in_flight = False
+            flash_request_in_progress = False
+        _flash_log_decision("[FLASH] control URL unavailable; skipping command")
         return
 
-    val = 1 if turn_on else 0
+    val = FLASH_ON_VALUE if turn_on else FLASH_OFF_VALUE
     url = f"{ESP32_FLASH_BASE_URL}/control?var=led_intensity&val={val}"
     try:
-        urllib.request.urlopen(url, timeout=0.25).read(1)
-        print("FLASH ON (dark)" if turn_on else "FLASH OFF")
-    except Exception:
-        pass
+        with urllib.request.urlopen(url, timeout=FLASH_HTTP_TIMEOUT_SEC):
+            pass
+        runtime_debug_log(f"[FLASH] {'ON' if turn_on else 'OFF'} sent (val={val})")
+    except Exception as exc:
+        runtime_debug_log(f"[FLASH] request failed for {'ON' if turn_on else 'OFF'}: {exc}")
     finally:
         next_state = None
+        now = time.time()
         with flash_state_lock:
-            flash_request_in_flight = False
-            # If brightness flipped during in-flight request, send latest pending state next.
+            flash_request_in_progress = False
             if flash_pending_state is not None and flash_pending_state != flash_is_on:
-                next_state = flash_pending_state
+                candidate_state = flash_pending_state
                 flash_pending_state = None
-                flash_is_on = next_state
-                flash_request_in_flight = True
+
+                cooldown_left = FLASH_SWITCH_COOLDOWN_SEC - (now - last_switch_time)
+                if cooldown_left > 0:
+                    flash_pending_state = candidate_state
+                    _flash_log_decision(
+                        f"[FLASH] pending {'ON' if candidate_state else 'OFF'} delayed by cooldown ({cooldown_left:.2f}s)",
+                        now=now,
+                    )
+                else:
+                    _apply_flash_transition_locked(candidate_state, now)
+                    next_state = candidate_state
             else:
                 flash_pending_state = None
 
         if next_state is not None:
-            Thread(target=_send_flash_request, args=(next_state,), daemon=True).start()
+            runtime_debug_log(f"[FLASH] transition -> {'ON' if next_state else 'OFF'} (queued)")
+            Thread(target=send_flash_request, args=(next_state,), daemon=True).start()
+
 
 def update_flash_by_brightness(avg_brightness):
-    global flash_is_on, flash_pending_state, flash_request_in_flight
-    desired_on = avg_brightness < EXTREME_DARK_TH
+    global flash_is_on, flash_pending_state, flash_request_in_progress
+    global flash_brightness_ema, dark_frame_streak, bright_frame_streak
+    global last_flash_debug_log, last_on_time, last_off_time, last_switch_time
+    global ignore_brightness_until
 
+    now = time.time()
+    raw_brightness = float(avg_brightness)
+    transition_state = None
+    transition_raw = 0.0
+    transition_filtered = 0.0
+
+    snapshot = None
     with flash_state_lock:
-        # Only send when state changes, not on every frame.
-        if flash_is_on == desired_on and not flash_request_in_flight:
-            return
-        if flash_request_in_flight:
-            flash_pending_state = desired_on
-            return
-        if flash_is_on == desired_on:
-            return
-        flash_is_on = desired_on
-        flash_request_in_flight = True
+        if flash_brightness_ema is None:
+            flash_brightness_ema = raw_brightness
+        else:
+            flash_brightness_ema = (
+                (1.0 - FLASH_SMOOTH_ALPHA) * flash_brightness_ema
+                + FLASH_SMOOTH_ALPHA * raw_brightness
+            )
 
-    # Non-blocking HTTP call to avoid slowing inference/video.
-    Thread(target=_send_flash_request, args=(desired_on,), daemon=True).start()
+        filtered_brightness = float(flash_brightness_ema)
+
+        if (now - last_flash_debug_log) >= FLASH_DEBUG_LOG_INTERVAL_SEC:
+            hold_left = max(0.0, ignore_brightness_until - now)
+            runtime_debug_log(
+                f"[FLASH DBG] raw={raw_brightness:.1f} filt={filtered_brightness:.1f} "
+                f"state={'ON' if flash_is_on else 'OFF'} dark={dark_frame_streak} bright={bright_frame_streak} "
+                f"hold={hold_left:.2f}s req={'Y' if flash_request_in_progress else 'N'}"
+            )
+            last_flash_debug_log = now
+
+        # Ignore immediate post-switch brightness to avoid flash/self-exposure feedback loops.
+        if now < ignore_brightness_until:
+            return flash_is_on, ignore_brightness_until, last_switch_time
+
+        if filtered_brightness < LOW_LIGHT_THRESHOLD:
+            dark_frame_streak += 1
+            bright_frame_streak = 0
+        elif filtered_brightness > FLASH_OFF_THRESHOLD:
+            bright_frame_streak += 1
+            dark_frame_streak = 0
+        else:
+            dark_frame_streak = 0
+            bright_frame_streak = 0
+
+        desired_state = flash_is_on
+
+        if flash_is_on:
+            on_elapsed = now - last_on_time
+            if bright_frame_streak >= FLASH_BRIGHT_DEBOUNCE_FRAMES:
+                if on_elapsed >= FLASH_MIN_ON_SEC:
+                    desired_state = False
+                else:
+                    _flash_log_decision(
+                        f"[FLASH] keep ON (min-on {FLASH_MIN_ON_SEC:.1f}s, elapsed={on_elapsed:.2f}s)",
+                        now=now,
+                    )
+        else:
+            off_elapsed = now - last_off_time
+            if dark_frame_streak >= FLASH_DARK_DEBOUNCE_FRAMES:
+                if off_elapsed >= FLASH_MIN_OFF_SEC:
+                    desired_state = True
+                else:
+                    _flash_log_decision(
+                        f"[FLASH] keep OFF (min-off {FLASH_MIN_OFF_SEC:.1f}s, elapsed={off_elapsed:.2f}s)",
+                        now=now,
+                    )
+
+        if desired_state == flash_is_on:
+            return flash_is_on, ignore_brightness_until, last_switch_time
+
+        since_switch = now - last_switch_time
+        if since_switch < FLASH_SWITCH_COOLDOWN_SEC:
+            _flash_log_decision(
+                f"[FLASH] switch blocked by cooldown ({FLASH_SWITCH_COOLDOWN_SEC - since_switch:.2f}s left)",
+                now=now,
+            )
+            return flash_is_on, ignore_brightness_until, last_switch_time
+
+        if flash_request_in_progress:
+            flash_pending_state = desired_state
+            _flash_log_decision(
+                f"[FLASH] queued {'ON' if desired_state else 'OFF'} while request in progress",
+                now=now,
+            )
+            return flash_is_on, ignore_brightness_until, last_switch_time
+
+        _apply_flash_transition_locked(desired_state, now)
+        transition_state = desired_state
+        transition_raw = raw_brightness
+        transition_filtered = filtered_brightness
+        snapshot = (flash_is_on, ignore_brightness_until, last_switch_time)
+
+    if transition_state is not None:
+        runtime_debug_log(
+            f"[FLASH] transition -> {'ON' if transition_state else 'OFF'} "
+            f"raw={transition_raw:.1f} filt={transition_filtered:.1f}"
+        )
+        Thread(target=send_flash_request, args=(transition_state,), daemon=True).start()
+
+    if snapshot is None:
+        snapshot = get_flash_controller_snapshot()
+    return snapshot
+
+
+def get_flash_controller_snapshot():
+    with flash_state_lock:
+        return flash_is_on, ignore_brightness_until, last_switch_time
 
 # ==================================================
 # DB INITIALIZATION
@@ -631,29 +883,122 @@ attendance_queue = Queue(maxsize=DB_QUEUE_MAX)
 # ==================================================
 # ONNX SESSION HELPER
 # ==================================================
-def make_session(model_path):
-    available = ort.get_available_providers()
-    providers = []
-    if "QNNExecutionProvider" in available:
-        providers.append(("QNNExecutionProvider", qnn))
-    providers.append("CPUExecutionProvider")
-    return ort.InferenceSession(model_path, providers=providers)
+def _build_ort_fallback_chain():
+    if ORT_QNN_AVAILABLE:
+        return [("QNNExecutionProvider", qnn), "CPUExecutionProvider"]
+    return ["CPUExecutionProvider"]
+
+
+ORT_FALLBACK_PROVIDER_CHAIN = _build_ort_fallback_chain()
+
+
+def _log_session_debug(session):
+    print("Available providers:", ort.get_available_providers())
+    print("Session providers:", session.get_providers())
+    input_type = session.get_inputs()[0].type
+    print("Model input type:", input_type)
+    if input_type == "tensor(float)":
+        print("WARNING: Model is float32 → may not run on NPU efficiently")
+
+
+def make_session(model_path, model_name):
+    sess_options = ort.SessionOptions()
+    sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+    sess_options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+    # Keep execution deterministic and avoid CPU oversubscription.
+    sess_options.intra_op_num_threads = 3 if (os.cpu_count() or 1) >= 6 else 2
+    sess_options.inter_op_num_threads = 2
+    sess_options.enable_mem_pattern = True
+    sess_options.enable_mem_reuse = True
+    sess_options.add_session_config_entry("session.intra_op.allow_spinning", "0")
+    sess_options.add_session_config_entry("session.inter_op.allow_spinning", "0")
+
+    # QNN execution test: try NPU-only first (no CPU in provider chain).
+    if ORT_QNN_AVAILABLE:
+        try:
+            session = ort.InferenceSession(
+                model_path,
+                sess_options=sess_options,
+                providers=[("QNNExecutionProvider", qnn)],
+            )
+            _log_session_debug(session)
+            return session
+        except Exception as exc:
+            print(f"QNN failed → falling back to CPU ({model_name}): {exc}")
+    else:
+        print(f"QNN failed → falling back to CPU ({model_name}): provider not available")
+
+    session = ort.InferenceSession(
+        model_path,
+        sess_options=sess_options,
+        providers=ORT_FALLBACK_PROVIDER_CHAIN,
+    )
+    _log_session_debug(session)
+    return session
 
 # ==================================================
 # LOAD MODELS & DB
 # ==================================================
 print("⏳ Loading Models...")
 
-face_sess = make_session(FACE_MODEL_PATH)
-face_input = face_sess.get_inputs()[0].name
+print(f"[ORT] Available providers: {list(ORT_AVAILABLE_PROVIDERS)}")
+if ORT_QNN_AVAILABLE:
+    print("[ORT] QNNExecutionProvider detected and configured as primary provider.")
+else:
+    print("[ORT] QNNExecutionProvider not found. Running with CPU fallback only.")
 
-live_sess = make_session(LIVENESS_MODEL_PATH)
+face_sess = None
+face_input = None
+face_providers = []
+haar_face_cascade = None
+face_detector_mode = "onnx"
+
+if FACE_DETECTOR_BACKEND in ("auto", "haar"):
+    try:
+        cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        haar_face_cascade = cv2.CascadeClassifier(cascade_path)
+        if haar_face_cascade.empty():
+            raise RuntimeError(f"Failed to load cascade: {cascade_path}")
+        face_detector_mode = "haar"
+        print(f"[DETECT] Using Haar detector at source resolution ({cascade_path})")
+    except Exception as e:
+        haar_face_cascade = None
+        if FACE_DETECTOR_BACKEND == "haar":
+            raise
+        print(f"[DETECT] Haar unavailable, falling back to ONNX detector: {e}")
+
+if face_detector_mode != "haar":
+    face_sess = make_session(FACE_MODEL_PATH, "face")
+    face_input = face_sess.get_inputs()[0].name
+    face_providers = face_sess.get_providers()
+    print(f"[ORT] Face session providers: {face_providers}")
+else:
+    print("[DETECT] ONNX face detector bypassed to avoid full-frame upscaling.")
+
+live_sess = make_session(LIVENESS_MODEL_PATH, "liveness")
 live_input_name = live_sess.get_inputs()[0].name
 live_input_type = live_sess.get_inputs()[0].type
 LIVE_H, LIVE_W = live_sess.get_inputs()[0].shape[2], live_sess.get_inputs()[0].shape[3]
+live_providers = live_sess.get_providers()
+print(f"[ORT] Liveness session providers: {live_providers}")
 
-recog_sess = make_session(RECOG_MODEL_PATH)
+recog_sess = make_session(RECOG_MODEL_PATH, "recognition")
 recog_input = recog_sess.get_inputs()[0].name
+recog_input_type = recog_sess.get_inputs()[0].type
+recog_providers = recog_sess.get_providers()
+print(f"[ORT] Recognition session providers: {recog_providers}")
+
+qnn_provider_groups = [live_providers, recog_providers] + ([face_providers] if face_providers else [])
+qnn_primary_all = all(
+    providers and providers[0] == "QNNExecutionProvider"
+    for providers in qnn_provider_groups
+)
+qnn_listed_all = all(
+    "QNNExecutionProvider" in providers
+    for providers in qnn_provider_groups
+)
+print(f"[ORT] NPU primary across all sessions: {'YES' if qnn_primary_all else 'NO'}")
+print(f"[ORT] NPU listed in all sessions: {'YES' if qnn_listed_all else 'NO'}")
 
 def normalize_embedding(emb):
     emb = np.asarray(emb, dtype=np.float32).reshape(-1)
@@ -765,14 +1110,21 @@ try:
             db_identity_names,
             db_identity_embeddings,
         )
-        # --- CHANGE: Slightly relax calibrated similarity thresholds (without changing calibration formula) ---
-        relax_offset = 0.02
-        SIM_ACCEPT_TH = max(0.5, SIM_ACCEPT_TH - relax_offset)
-        SIM_UNCERTAIN_TH = max(0.45, SIM_UNCERTAIN_TH - relax_offset)
+        # Relax calibration to improve recall on enrollment-consistent crops.
+        SIM_ACCEPT_TH = float(np.clip(SIM_ACCEPT_TH - SIM_CALIBRATION_RELAX_OFFSET, SIM_ACCEPT_MIN, 0.90))
+        SIM_UNCERTAIN_TH = float(
+            np.clip(
+                SIM_UNCERTAIN_TH - SIM_CALIBRATION_RELAX_OFFSET,
+                SIM_UNCERTAIN_MIN,
+                max(SIM_UNCERTAIN_MIN, SIM_ACCEPT_TH - 0.02),
+            )
+        )
+        id_accept_floor = max(SIM_UNCERTAIN_TH + 0.01, SIM_ACCEPT_TH - 0.03)
+        id_accept_ceil = SIM_ACCEPT_TH + SIM_ID_ACCEPT_SPREAD
         db_identity_accept_th = {
-            name: float(th - relax_offset) for name, th in db_identity_accept_th.items()
+            name: float(np.clip(th - SIM_CALIBRATION_RELAX_OFFSET, id_accept_floor, id_accept_ceil))
+            for name, th in db_identity_accept_th.items()
         }
-        # --- CHANGE: Print final adjusted thresholds ---
         print(
             f"[SIM ADJUST] final_accept={SIM_ACCEPT_TH:.3f}, final_uncertain={SIM_UNCERTAIN_TH:.3f}, "
             f"final_identity_accept={ {k: round(v, 3) for k, v in db_identity_accept_th.items()} }"
@@ -818,13 +1170,51 @@ class BoxSmoother:
         return self.box.astype(int)
 
 def blur_score_gray(face_gray):
-    return cv2.Laplacian(face_gray, cv2.CV_64F).var()
+    return cv2.Laplacian(face_gray, cv2.CV_32F).var()
 
 def preprocess_recog(face):
     face = cv2.resize(face, (112, 112), interpolation=cv2.INTER_AREA)
-    face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
-    face = (face.astype(np.float32) / 255.0 - 0.5) / 0.5
-    return face.transpose(2, 0, 1)[None].astype(np.float32)
+    # Use a single float conversion pass and in-place normalization.
+    face = face[:, :, ::-1].astype(np.float32)  # BGR -> RGB
+    face *= np.float32(1.0 / 127.5)
+    face -= 1.0
+    return face.transpose(2, 0, 1)[None]
+
+
+def preprocess_liveness_face(face_bgr, lighting_state, clahe_obj, roi_weight, face_mean=None, face_dark_ratio=None):
+    face = cv2.resize(face_bgr, (LIVE_W, LIVE_H), interpolation=cv2.INTER_AREA)
+
+    # Fast path for normal/mild lighting: skip YCrCb + histogram operations.
+    use_clahe = (
+        lighting_state == "LOW_LIGHT"
+        and (
+            face_mean is None
+            or face_mean < CLAHE_EXTREME_TH
+            or (face_dark_ratio is not None and face_dark_ratio >= (FACE_DARK_RATIO_TH + 0.10))
+        )
+    )
+    use_flash_equalize = (
+        lighting_state == "FLASH_ACTIVE"
+        and (face_mean is None or face_mean >= FLASH_EQUALIZE_FACE_MEAN_TH)
+    )
+
+    if use_clahe or use_flash_equalize:
+        ycrcb = cv2.cvtColor(face, cv2.COLOR_BGR2YCrCb)
+        y_chan = ycrcb[:, :, 0]
+
+        if use_clahe:
+            y_chan = clahe_obj.apply(y_chan)
+        else:
+            np.minimum(y_chan, 235, out=y_chan)
+            y_chan = cv2.equalizeHist(y_chan)
+
+        ycrcb[:, :, 0] = y_chan
+        face_rgb = cv2.cvtColor(ycrcb, cv2.COLOR_YCrCb2RGB)
+    else:
+        face_rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
+
+    cv2.multiply(face_rgb, roi_weight, dst=face_rgb, scale=1.0 / 255.0)
+    return face_rgb
 
 def decode_face(hm, bx, fw, fh, avg):
     hm = hm[0, 0].astype(np.float32)
@@ -850,11 +1240,11 @@ def decode_face(hm, bx, fw, fh, avg):
 def match_identity(test_emb):
     """
     Returns:
-      name, best_similarity, match_state
+            final_name, candidate_name, best_similarity, second_similarity, margin, id_accept_threshold, match_state
       match_state in: CONFIDENT, UNCERTAIN, UNKNOWN, NO_DB
     """
     if db_identity_embeddings.size == 0:
-        return "UNKNOWN", 0.0, "NO_DB"
+                return "UNKNOWN", "UNKNOWN", 0.0, -1.0, 0.0, SIM_ACCEPT_TH, "NO_DB"
 
     test_emb = normalize_embedding(test_emb)
     sims = np.dot(db_identity_embeddings, test_emb)
@@ -874,13 +1264,13 @@ def match_identity(test_emb):
 
     # Strong accept only when similarity is high enough and clearly wins.
     if best_sim >= id_accept_th and margin >= SIM_MARGIN_TH:
-        return best_name, best_sim, "CONFIDENT"
+        return best_name, best_name, best_sim, second_sim, margin, id_accept_th, "CONFIDENT"
 
     # Similar but not confident: keep it as uncertain to avoid wrong IDs.
     if best_sim >= SIM_UNCERTAIN_TH:
-        return "UNKNOWN", best_sim, "UNCERTAIN"
+        return "UNKNOWN", best_name, best_sim, second_sim, margin, id_accept_th, "UNCERTAIN"
 
-    return "UNKNOWN", best_sim, "UNKNOWN"
+    return "UNKNOWN", best_name, best_sim, second_sim, margin, id_accept_th, "UNKNOWN"
 
 def attendance_writer_worker():
     conn = None
@@ -1089,6 +1479,7 @@ class Camera:
                 arr = np.frombuffer(jpg_bytes, dtype=np.uint8)
                 frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
                 if frame is not None:
+                    # Keep ESP32 native resolution (QVGA) to avoid detail loss from upscaling.
                     self._set_frame(frame)
 
     def update(self):
@@ -1159,25 +1550,111 @@ def inference_worker():
     last_confident_name = None
     consecutive_id_hits = 0
 
+    detector_stride = 2
+    # Start slightly lighter; adaptive tuning can still tighten when FPS is high.
+    liveness_stride = min(2, LIVENESS_EVERY_N_MAX)
+    recog_stride = min(2, RECOG_EVERY_N_MAX)
+    last_adapt_ts = time.time()
+    adapt_low_hits = 0
+    adapt_high_hits = 0
+
     last_cam_frame_id = -1
     frame_counter = 0
     tracked_box = None
     tracked_box_age = FACE_DET_EVERY_N
-    det_input = np.empty((1, 1, 480, 640), dtype=np.uint8)
+    prev_tracked_box_for_stride = None
+    use_haar_detector = (face_detector_mode == "haar" and haar_face_cascade is not None)
+    det_input = None
+    det_input_view = None
+    det_h, det_w = 0, 0
+    face_feed = None
+    if not use_haar_detector:
+        det_input = np.empty((1, 1, 480, 640), dtype=np.uint8)
+        det_input_view = det_input[0, 0]
+        det_h, det_w = det_input_view.shape
+        face_feed = {face_input: det_input}
     emb_sum = None
 
     live_input_f32 = np.empty((1, 3, LIVE_H, LIVE_W), dtype=np.float32)
     live_input_f16 = np.empty((1, 3, LIVE_H, LIVE_W), dtype=np.float16) if "float16" in live_input_type else None
+    live_feed_f32 = {live_input_name: live_input_f32}
+    live_feed_f16 = {live_input_name: live_input_f16} if live_input_f16 is not None else None
     inv_127_5 = np.float32(1.0 / 127.5)
+    live_thumb_curr = np.empty((LIVENESS_MOTION_THUMB_SIZE[1], LIVENESS_MOTION_THUMB_SIZE[0]), dtype=np.uint8)
+    live_thumb_prev = np.empty_like(live_thumb_curr)
+    live_thumb_valid = False
 
-    face_run = face_sess.run
+    recog_resize_bgr = np.empty((112, 112, 3), dtype=np.uint8)
+    recog_resize_rgb = np.empty((112, 112, 3), dtype=np.uint8)
+    recog_norm_hwc = np.empty((112, 112, 3), dtype=np.float32)
+    recog_input_f32 = np.empty((1, 3, 112, 112), dtype=np.float32)
+    recog_input_f16 = np.empty((1, 3, 112, 112), dtype=np.float16) if "float16" in recog_input_type else None
+    recog_feed_f32 = {recog_input: recog_input_f32}
+    recog_feed_f16 = {recog_input: recog_input_f16} if recog_input_f16 is not None else None
+    recog_thumb_curr = np.empty((RECOG_MOTION_THUMB_SIZE[1], RECOG_MOTION_THUMB_SIZE[0]), dtype=np.uint8)
+    recog_thumb_prev = np.empty_like(recog_thumb_curr)
+    recog_thumb_valid = False
+    last_recog_eval_frame = -1000
+    recog_skip_until = -1
+    last_blur_eval_frame = -1000
+    last_blur_score = 0.0
+    liveness_skip_until = -1
+    flash_on_now = False
+    flash_brightness_hold_until = 0.0
+    avg_brightness = 0.0
+    last_avg_brightness = 0.0
+    detector_min_face_px = HAAR_MIN_FACE_PX
+
+    liveness_roi_weight = np.full((LIVE_H, LIVE_W), 96, dtype=np.uint8)
+    cv2.ellipse(
+        liveness_roi_weight,
+        (LIVE_W // 2, LIVE_H // 2),
+        (int(LIVE_W * 0.40), int(LIVE_H * 0.47)),
+        0,
+        0,
+        360,
+        255,
+        -1,
+    )
+    liveness_roi_weight_3c = cv2.merge([liveness_roi_weight, liveness_roi_weight, liveness_roi_weight])
+
+    scene_brightness_ema = None
+    lighting_state = "NORMAL_LIGHT"
+    lighting_stable_until = 0.0
+    flash_liveness_ignore_until = 0.0
+    last_liveness_log_ts = 0.0
+
+    last_live_vote = None
+    last_live_score = 0.0
+    last_live_eval_frame = -1000
+    last_match_log_ts = 0.0
+
+    perf_last_log_ts = time.time()
+    perf_frames = 0
+    perf_t_gray = 0.0
+    perf_t_flash = 0.0
+    perf_t_detect = 0.0
+    perf_t_live = 0.0
+    perf_t_recog = 0.0
+    npu_timing_last_log_ts = time.time()
+    face_infer_time_sum = 0.0
+    face_infer_count = 0
+    live_infer_time_sum = 0.0
+    live_infer_count = 0
+    recog_infer_time_sum = 0.0
+    recog_infer_count = 0
+
+    face_run = face_sess.run if face_sess is not None else None
     live_run = live_sess.run
     recog_run = recog_sess.run
 
     def reset_identity_buffer():
-        nonlocal emb_sum
+        nonlocal emb_sum, last_recog_eval_frame, recog_thumb_valid, recog_skip_until
         emb_accumulation_buf.clear()
         emb_sum = None
+        last_recog_eval_frame = -1000
+        recog_thumb_valid = False
+        recog_skip_until = -1
 
     def reset_votes():
         nonlocal live_votes
@@ -1186,15 +1663,26 @@ def inference_worker():
 
     def reset_temporal_state():
         nonlocal consecutive_live, last_confident_name, consecutive_id_hits, verification_start
+        nonlocal last_live_vote, last_live_score, last_live_eval_frame, live_thumb_valid
+        nonlocal last_blur_eval_frame, last_blur_score, liveness_skip_until
         reset_votes()
         reset_identity_buffer()
         consecutive_live = 0
         last_confident_name = None
         consecutive_id_hits = 0
         verification_start = 0.0
+        last_live_vote = None
+        last_live_score = 0.0
+        last_live_eval_frame = -1000
+        live_thumb_valid = False
+        last_blur_eval_frame = -1000
+        last_blur_score = 0.0
+        liveness_skip_until = -1
 
     def append_vote(vote):
         nonlocal live_votes
+        if vote is None:
+            return
         if len(vote_buf) == vote_buf.maxlen:
             live_votes -= vote_buf[0]
         vote_buf.append(vote)
@@ -1207,38 +1695,149 @@ def inference_worker():
         fps_buffer.append(frame_time)
         fps_time_sum += frame_time
 
+    def prepare_recog_feed(face_bgr):
+        # Reuse pre-allocated buffers to avoid per-frame tensor allocations for recognition.
+        cv2.resize(face_bgr, (112, 112), dst=recog_resize_bgr, interpolation=cv2.INTER_AREA)
+        cv2.cvtColor(recog_resize_bgr, cv2.COLOR_BGR2RGB, dst=recog_resize_rgb)
+        np.multiply(recog_resize_rgb, inv_127_5, out=recog_norm_hwc, casting="unsafe")
+        np.subtract(recog_norm_hwc, 1.0, out=recog_norm_hwc)
+        recog_input_f32[0] = recog_norm_hwc.transpose(2, 0, 1)
+        if recog_input_f16 is not None:
+            np.copyto(recog_input_f16, recog_input_f32, casting="unsafe")
+            return recog_feed_f16
+        return recog_feed_f32
+
     update_lcd("System Ready\nWaiting for Face")
+    frame_h = -1
+    frame_w = -1
+    frame_area_inv = 0.0
 
     while inference_running and not stop_event.is_set():
         frame, last_cam_frame_id = cam.read_if_new(last_cam_frame_id, copy_frame=False)
-        if frame is None:
+        if frame is None or frame.size == 0:
             time.sleep(0.002)
             continue
 
         frame_counter += 1
         h, w = frame.shape[:2]
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        avg_brightness = float(cv2.mean(gray)[0])
-        update_flash_by_brightness(avg_brightness)
-        is_low_light = avg_brightness < LOW_LIGHT_WARN_TH
+        if h <= 0 or w <= 0:
+            time.sleep(0.002)
+            continue
+        if h != frame_h or w != frame_w:
+            frame_h, frame_w = h, w
+            frame_area_inv = 1.0 / float(max(1, w * h))
+            detector_min_face_px = max(HAAR_MIN_FACE_PX, int(min(h, w) * 0.08))
 
-        blur_th = 60.0 if avg_brightness > 90 else (55.0 if avg_brightness > 70 else 45.0)
+        t0 = time.perf_counter()
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        if frame_counter == 1 or (frame_counter % BRIGHTNESS_UPDATE_EVERY_N == 0):
+            avg_brightness = float(gray.mean(dtype=np.float32))
+            last_avg_brightness = avg_brightness
+        else:
+            avg_brightness = last_avg_brightness
+        perf_t_gray += time.perf_counter() - t0
+
+        t0 = time.perf_counter()
+        # Evaluate flash less frequently to reduce lock churn and avoid needless HTTP transitions.
+        if frame_counter == 1 or (frame_counter % FLASH_UPDATE_EVERY_N == 0):
+            flash_on_now, flash_brightness_hold_until, _ = update_flash_by_brightness(avg_brightness)
+        perf_t_flash += time.perf_counter() - t0
+
+        frame_now = time.time()
+
+        if scene_brightness_ema is None:
+            prev_scene_ema = avg_brightness
+            scene_brightness_ema = avg_brightness
+        else:
+            prev_scene_ema = scene_brightness_ema
+            scene_brightness_ema = (
+                (1.0 - LIGHT_STATE_SMOOTH_ALPHA) * scene_brightness_ema
+                + LIGHT_STATE_SMOOTH_ALPHA * avg_brightness
+            )
+
+        brightness_spike = abs(avg_brightness - prev_scene_ema) >= LIGHT_SPIKE_DELTA
+
+        next_lighting_state = lighting_state
+        if flash_on_now or frame_now < flash_brightness_hold_until or (brightness_spike and avg_brightness > scene_brightness_ema):
+            next_lighting_state = "FLASH_ACTIVE"
+        elif scene_brightness_ema <= LIGHT_STATE_LOW_ENTER:
+            next_lighting_state = "LOW_LIGHT"
+        elif scene_brightness_ema >= LIGHT_STATE_LOW_EXIT:
+            next_lighting_state = "NORMAL_LIGHT"
+        elif lighting_state == "FLASH_ACTIVE":
+            next_lighting_state = "LOW_LIGHT" if scene_brightness_ema < LOW_LIGHT_WARN_TH else "NORMAL_LIGHT"
+
+        if next_lighting_state != lighting_state:
+            runtime_debug_log(
+                f"[LIGHT] {lighting_state} -> {next_lighting_state} "
+                f"raw={avg_brightness:.1f} ema={scene_brightness_ema:.1f} spike={int(brightness_spike)}"
+            )
+            lighting_state = next_lighting_state
+            lighting_stable_until = frame_now + LIGHT_STATE_TRANSITION_SEC
+            if lighting_state == "FLASH_ACTIVE":
+                flash_liveness_ignore_until = frame_now + FLASH_LIVENESS_STABILIZE_SEC
+            else:
+                flash_liveness_ignore_until = max(flash_liveness_ignore_until, frame_now + 0.2)
+            reset_temporal_state()
+
+        if ENABLE_RUNTIME_DEBUG_LOGS and (frame_now - last_liveness_log_ts) >= LIVENESS_LOG_INTERVAL_SEC:
+            hold_left = max(0.0, max(lighting_stable_until, flash_liveness_ignore_until) - frame_now)
+            runtime_debug_log(
+                f"[LIGHT DBG] raw={avg_brightness:.1f} ema={scene_brightness_ema:.1f} "
+                f"state={lighting_state} flash={int(flash_on_now)} hold={hold_left:.2f}s"
+            )
+            last_liveness_log_ts = frame_now
+
+        is_low_light = lighting_state == "LOW_LIGHT" or scene_brightness_ema < LOW_LIGHT_WARN_TH
+
+        if lighting_state == "LOW_LIGHT":
+            blur_th = 42.0
+            live_threshold = LIVENESS_THRESHOLD_LOW_LIGHT
+        elif lighting_state == "FLASH_ACTIVE":
+            blur_th = 62.0
+            live_threshold = LIVENESS_THRESHOLD_FLASH
+        else:
+            blur_th = 55.0 if scene_brightness_ema > 70 else 48.0
+            live_threshold = LIVENESS_THRESHOLD_NORMAL
 
         current_box = None
         label = "SPOOF"
         reason = "NO FACE"
         name_show = "UNKNOWN"
 
-        run_detector = (tracked_box is None) or (frame_counter % FACE_DET_EVERY_N == 0)
+        det_t0 = time.perf_counter()
+        track_motion_px = float("inf")
+        if tracked_box is not None and prev_tracked_box_for_stride is not None:
+            tcx = tracked_box[0] + (tracked_box[2] * 0.5)
+            tcy = tracked_box[1] + (tracked_box[3] * 0.5)
+            pcx = prev_tracked_box_for_stride[0] + (prev_tracked_box_for_stride[2] * 0.5)
+            pcy = prev_tracked_box_for_stride[1] + (prev_tracked_box_for_stride[3] * 0.5)
+            track_motion_px = float(np.hypot(tcx - pcx, tcy - pcy))
+        face_stable_for_det = (
+            tracked_box is not None
+            and tracked_box_age <= FACE_STABLE_TRACK_AGE_MAX
+            and track_motion_px <= FACE_STABLE_MOTION_PX
+        )
+        # Adaptive detector cadence: stable face -> lighter detector rate, movement -> faster refresh.
+        detector_stride = 4 if face_stable_for_det else 2
+        run_detector = (tracked_box is None) or (frame_counter % detector_stride == 0)
         if run_detector:
-            gray_proc = clahe.apply(gray) if avg_brightness < CLAHE_TH else gray
-            cv2.resize(gray_proc, (640, 480), dst=det_input[0, 0], interpolation=cv2.INTER_LINEAR)
-            out = face_run(None, {face_input: det_input})
-            res = decode_face(out[0], out[1], w, h, avg_brightness)
-
-            if res:
-                raw, conf = res
-                if conf > 0.6:
+            # CLAHE for detector is reserved for truly dark frames.
+            use_clahe_for_det = lighting_state == "LOW_LIGHT" and avg_brightness < CLAHE_EXTREME_TH
+            gray_proc = clahe.apply(gray) if use_clahe_for_det else gray
+            if use_haar_detector:
+                # Native-resolution detection path (no full-frame upscaling).
+                faces = haar_face_cascade.detectMultiScale(
+                    gray_proc,
+                    scaleFactor=HAAR_SCALE_FACTOR,
+                    minNeighbors=HAAR_MIN_NEIGHBORS,
+                    flags=cv2.CASCADE_SCALE_IMAGE,
+                    minSize=(detector_min_face_px, detector_min_face_px),
+                )
+                if len(faces) > 0:
+                    if len(faces) > HAAR_MAX_CANDIDATES:
+                        faces = sorted(faces, key=lambda b: b[2] * b[3], reverse=True)[:HAAR_MAX_CANDIDATES]
+                    raw = max(faces, key=lambda b: b[2] * b[3])
                     x, y, bw, bh = smoother.update(raw)
                     x = int(np.clip(x, 0, max(0, w - 1)))
                     y = int(np.clip(y, 0, max(0, h - 1)))
@@ -1248,62 +1847,224 @@ def inference_worker():
                     tracked_box_age = 0
                 else:
                     tracked_box = None
+            elif face_run is not None and face_feed is not None:
+                # ONNX fallback path (kept for compatibility if native detector cannot load).
+                if gray_proc.shape[0] == det_h and gray_proc.shape[1] == det_w:
+                    np.copyto(det_input_view, gray_proc)
+                else:
+                    cv2.resize(gray_proc, (det_w, det_h), dst=det_input_view, interpolation=cv2.INTER_LINEAR)
+                infer_t0 = time.perf_counter()
+                out = face_run(None, face_feed)
+                face_infer_time_sum += time.perf_counter() - infer_t0
+                face_infer_count += 1
+                res = decode_face(out[0], out[1], w, h, avg_brightness)
+
+                if res:
+                    raw, conf = res
+                    if conf > 0.6:
+                        x, y, bw, bh = smoother.update(raw)
+                        x = int(np.clip(x, 0, max(0, w - 1)))
+                        y = int(np.clip(y, 0, max(0, h - 1)))
+                        bw = int(np.clip(bw, 1, max(1, w - x)))
+                        bh = int(np.clip(bh, 1, max(1, h - y)))
+                        tracked_box = (x, y, bw, bh)
+                        tracked_box_age = 0
+                    else:
+                        tracked_box = None
+                else:
+                    tracked_box = None
             else:
                 tracked_box = None
         else:
             tracked_box_age += 1
-            if tracked_box_age > FACE_DET_EVERY_N:
+            if tracked_box_age > detector_stride:
                 tracked_box = None
+        if tracked_box is not None:
+            prev_tracked_box_for_stride = tracked_box
+        else:
+            prev_tracked_box_for_stride = None
+        perf_t_detect += time.perf_counter() - det_t0
 
         if tracked_box is not None:
             x, y, bw, bh = tracked_box
             current_box = (x, y, bw, bh)
 
-            face = frame[y:y + bh, x:x + bw]
-            face_gray = gray[y:y + bh, x:x + bw]
+            if bw > 0 and bh > 0:
+                ratio = (bw * bh) * frame_area_inv
 
-            if face.size > 0 and face_gray.size > 0:
-                ratio = (bw * bh) / float(w * h)
+                tight_w = max(1, int(bw * FACE_TIGHT_CROP_RATIO))
+                tight_h = max(1, int(bh * FACE_TIGHT_CROP_RATIO))
+                tight_x = int(np.clip(x + (bw - tight_w) // 2, 0, max(0, w - tight_w)))
+                tight_y = int(np.clip(y + (bh - tight_h) // 2, 0, max(0, h - tight_h)))
 
-                live_img = cv2.resize(face, (LIVE_W, LIVE_H), interpolation=cv2.INTER_AREA)
-                live_img = cv2.cvtColor(live_img, cv2.COLOR_BGR2RGB)
-                live_input_f32[0] = live_img.transpose(2, 0, 1)
-                live_input_f32 *= inv_127_5
-                live_input_f32 -= 1.0
+                face_tight = frame[tight_y:tight_y + tight_h, tight_x:tight_x + tight_w]
+                face_gray_tight = gray[tight_y:tight_y + tight_h, tight_x:tight_x + tight_w]
 
-                live_tensor = live_input_f32
-                if live_input_f16 is not None:
-                    np.copyto(live_input_f16, live_input_f32, casting="unsafe")
-                    live_tensor = live_input_f16
+                vote = None
 
-                logits = live_run(None, {live_input_name: live_tensor})[0][0]
-                if logits.shape[0] >= 2:
-                    diff = float(logits[1] - logits[0])
-                    if diff >= 0.0:
-                        exp_neg = np.exp(-diff)
-                        real_score = float(1.0 / (1.0 + exp_neg))
-                    else:
-                        exp_pos = np.exp(diff)
-                        real_score = float(exp_pos / (1.0 + exp_pos))
-                else:
-                    real_score = float(logits[0])
-
-                if ratio < MIN_FACE_RATIO:
-                    vote, reason = 0, "TOO FAR"
+                if face_tight.size == 0 or face_gray_tight.size == 0:
+                    reason = "FACE ROI"
                     consecutive_live = 0
+                    last_live_vote = None
+                    live_thumb_valid = False
+                elif frame_now < lighting_stable_until:
+                    reason = "STABILIZE_LIGHT"
+                    consecutive_live = 0
+                    last_live_vote = None
+                    live_thumb_valid = False
+                elif frame_now < flash_liveness_ignore_until:
+                    reason = "STABILIZE_FLASH"
+                    consecutive_live = 0
+                    last_live_vote = None
+                    live_thumb_valid = False
+                elif ratio < MIN_FACE_RATIO:
+                    reason = "TOO FAR"
+                    consecutive_live = 0
+                    last_live_vote = None
+                    live_thumb_valid = False
                 elif ratio > MAX_FACE_RATIO:
-                    vote, reason = 0, "TOO CLOSE"
+                    reason = "TOO CLOSE"
                     consecutive_live = 0
-                elif blur_score_gray(face_gray) < blur_th:
-                    vote, reason = 0, "BLUR"
-                    consecutive_live = 0
+                    last_live_vote = None
+                    live_thumb_valid = False
                 else:
-                    if real_score > LIVENESS_THRESHOLD:
-                        vote, reason = 1, "CNN"
-                        consecutive_live += 1
-                    else:
-                        vote, reason = 0, "CNN"
+                    if (
+                        last_blur_eval_frame < 0
+                        or (frame_counter - last_blur_eval_frame) >= BLUR_CHECK_EVERY_N
+                    ):
+                        last_blur_score = blur_score_gray(face_gray_tight)
+                        last_blur_eval_frame = frame_counter
+
+                    if last_blur_score < blur_th:
+                        reason = "BLUR"
                         consecutive_live = 0
+                        last_live_vote = None
+                        live_thumb_valid = False
+                    else:
+                        face_mean = float(cv2.mean(face_gray_tight)[0])
+                        dark_ratio = float(np.count_nonzero(face_gray_tight <= UNDEREXPOSED_PIXEL_TH)) / float(face_gray_tight.size)
+                        bright_ratio = float(np.count_nonzero(face_gray_tight >= OVEREXPOSED_PIXEL_TH)) / float(face_gray_tight.size)
+
+                        if face_mean <= FACE_DARK_MEAN_TH or dark_ratio >= FACE_DARK_RATIO_TH:
+                            reason = "UNDEREXPOSED"
+                            consecutive_live = 0
+                            last_live_vote = None
+                            live_thumb_valid = False
+                        elif face_mean >= FACE_BRIGHT_MEAN_TH or bright_ratio >= FACE_BRIGHT_RATIO_TH:
+                            reason = "OVEREXPOSED"
+                            consecutive_live = 0
+                            last_live_vote = None
+                            live_thumb_valid = False
+                        else:
+                            cache_age = frame_counter - last_live_eval_frame
+                            stable_live_skip = (
+                                last_live_vote is not None
+                                and last_live_vote > 0
+                                and consecutive_live > LIVENESS_SKIP_AFTER_CONSEC_LIVE
+                                and frame_counter <= liveness_skip_until
+                            )
+                            should_run_liveness = (
+                                not stable_live_skip
+                                and (
+                                    last_live_vote is None
+                                    or (frame_counter % liveness_stride == 0)
+                                    or (cache_age > LIVENESS_CACHE_MAX_FRAMES)
+                                )
+                            )
+                            reuse_cached_liveness = False
+                            thumb_computed = False
+
+                            # Skip liveness inference when the face ROI barely changed.
+                            if (
+                                should_run_liveness
+                                and last_live_vote is not None
+                                and cache_age <= LIVENESS_CACHE_MAX_REUSE_FRAMES
+                            ):
+                                cv2.resize(
+                                    face_gray_tight,
+                                    LIVENESS_MOTION_THUMB_SIZE,
+                                    dst=live_thumb_curr,
+                                    interpolation=cv2.INTER_AREA,
+                                )
+                                thumb_computed = True
+                                if live_thumb_valid:
+                                    motion_delta = cv2.norm(live_thumb_curr, live_thumb_prev, cv2.NORM_L1) / float(live_thumb_curr.size)
+                                    if motion_delta <= LIVENESS_MOTION_REUSE_DIFF_TH:
+                                        reuse_cached_liveness = True
+
+                            if should_run_liveness and not reuse_cached_liveness:
+                                live_t0 = time.perf_counter()
+                                live_img = preprocess_liveness_face(
+                                    face_tight,
+                                    lighting_state,
+                                    clahe,
+                                    liveness_roi_weight_3c,
+                                    face_mean=face_mean,
+                                    face_dark_ratio=dark_ratio,
+                                )
+
+                                live_input_f32[0] = live_img.transpose(2, 0, 1)
+                                live_input_f32 *= inv_127_5
+                                live_input_f32 -= 1.0
+
+                                infer_t0 = time.perf_counter()
+                                if live_input_f16 is not None:
+                                    np.copyto(live_input_f16, live_input_f32, casting="unsafe")
+                                    logits = live_run(None, live_feed_f16)[0][0]
+                                else:
+                                    logits = live_run(None, live_feed_f32)[0][0]
+                                live_infer_time_sum += time.perf_counter() - infer_t0
+                                live_infer_count += 1
+                                if logits.shape[0] >= 2:
+                                    diff = float(logits[1] - logits[0])
+                                    if diff >= 0.0:
+                                        exp_neg = np.exp(-diff)
+                                        real_score = float(1.0 / (1.0 + exp_neg))
+                                    else:
+                                        exp_pos = np.exp(diff)
+                                        real_score = float(exp_pos / (1.0 + exp_pos))
+                                else:
+                                    real_score = float(logits[0])
+
+                                if real_score > live_threshold:
+                                    vote = 1
+                                    reason = f"CNN {lighting_state} {real_score:.2f}"
+                                    consecutive_live += 1
+                                    if consecutive_live > LIVENESS_SKIP_AFTER_CONSEC_LIVE:
+                                        liveness_skip_until = frame_counter + LIVENESS_STABLE_SKIP_FRAMES
+                                else:
+                                    vote = 0
+                                    reason = f"CNN {lighting_state} {real_score:.2f}"
+                                    consecutive_live = 0
+                                    liveness_skip_until = -1
+
+                                last_live_vote = vote
+                                last_live_score = real_score
+                                last_live_eval_frame = frame_counter
+                                if not thumb_computed:
+                                    cv2.resize(
+                                        face_gray_tight,
+                                        LIVENESS_MOTION_THUMB_SIZE,
+                                        dst=live_thumb_curr,
+                                        interpolation=cv2.INTER_AREA,
+                                    )
+                                np.copyto(live_thumb_prev, live_thumb_curr)
+                                live_thumb_valid = True
+                                perf_t_live += time.perf_counter() - live_t0
+                            else:
+                                vote = last_live_vote
+                                if vote is not None:
+                                    reason = f"CNN CACHE {lighting_state} {last_live_score:.2f}"
+                                    if vote > 0:
+                                        consecutive_live += 1
+                                        if consecutive_live > LIVENESS_SKIP_AFTER_CONSEC_LIVE:
+                                            liveness_skip_until = frame_counter + LIVENESS_STABLE_SKIP_FRAMES
+                                    else:
+                                        consecutive_live = 0
+                                        liveness_skip_until = -1
+                                    if thumb_computed:
+                                        np.copyto(live_thumb_prev, live_thumb_curr)
+                                        live_thumb_valid = True
 
                 append_vote(vote)
 
@@ -1311,7 +2072,7 @@ def inference_worker():
                     label = "LIVE"
                 else:
                     label = "SPOOF"
-                    name_show = "SPOOF"
+                    name_show = "SPOOF" if reason.startswith("CNN") else "UNKNOWN"
                     reset_identity_buffer()
                     last_confident_name = None
                     consecutive_id_hits = 0
@@ -1334,24 +2095,84 @@ def inference_worker():
                         padded_face = frame[py:py + side, px:px + side]
 
                         if padded_face.size > 0:
-                            raw_emb = recog_run(None, {recog_input: preprocess_recog(padded_face)})[0][0]
-                            raw_emb = normalize_embedding(raw_emb)
+                            stable_id_skip = (
+                                last_confident_name is not None
+                                and consecutive_id_hits > RECOG_SKIP_AFTER_ID_HITS
+                                and frame_counter <= recog_skip_until
+                            )
+                            should_run_recog = (
+                                len(emb_accumulation_buf) < 2
+                                or (frame_counter % recog_stride == 0)
+                            ) and (not stable_id_skip)
+                            if (
+                                should_run_recog
+                                and last_confident_name is not None
+                                and (frame_counter - last_recog_eval_frame) <= (RECOG_CACHE_MAX_REUSE_FRAMES + (recog_stride * ID_STABLE_EXTRA_RECOG_SKIP))
+                            ):
+                                cv2.resize(
+                                    face_gray_tight,
+                                    RECOG_MOTION_THUMB_SIZE,
+                                    dst=recog_thumb_curr,
+                                    interpolation=cv2.INTER_AREA,
+                                )
+                                if recog_thumb_valid:
+                                    recog_motion_delta = cv2.norm(
+                                        recog_thumb_curr,
+                                        recog_thumb_prev,
+                                        cv2.NORM_L1,
+                                    ) / float(recog_thumb_curr.size)
+                                    if recog_motion_delta <= RECOG_MOTION_REUSE_DIFF_TH:
+                                        # Stable-ID + low motion path: reuse previous embedding window.
+                                        should_run_recog = False
 
-                            if len(emb_accumulation_buf) == emb_accumulation_buf.maxlen:
-                                oldest = emb_accumulation_buf.popleft()
-                                emb_sum -= oldest
+                            if should_run_recog:
+                                rec_t0 = time.perf_counter()
+                                infer_t0 = time.perf_counter()
+                                raw_emb = recog_run(None, prepare_recog_feed(padded_face))[0][0]
+                                recog_infer_time_sum += time.perf_counter() - infer_t0
+                                recog_infer_count += 1
+                                raw_emb = normalize_embedding(raw_emb)
 
-                            emb_accumulation_buf.append(raw_emb)
-                            if emb_sum is None:
-                                emb_sum = raw_emb.copy()
-                            else:
-                                emb_sum += raw_emb
+                                if len(emb_accumulation_buf) == emb_accumulation_buf.maxlen:
+                                    oldest = emb_accumulation_buf.popleft()
+                                    emb_sum -= oldest
+
+                                emb_accumulation_buf.append(raw_emb)
+                                if emb_sum is None:
+                                    emb_sum = raw_emb.copy()
+                                else:
+                                    emb_sum += raw_emb
+                                cv2.resize(
+                                    face_gray_tight,
+                                    RECOG_MOTION_THUMB_SIZE,
+                                    dst=recog_thumb_prev,
+                                    interpolation=cv2.INTER_AREA,
+                                )
+                                recog_thumb_valid = True
+                                last_recog_eval_frame = frame_counter
+                                perf_t_recog += time.perf_counter() - rec_t0
 
                     if len(emb_accumulation_buf) >= STRICT_WINDOW and emb_sum is not None:
                         mean_emb = normalize_embedding(emb_sum / len(emb_accumulation_buf))
 
                         if len(db_identity_names) > 0:
-                            name, best_sim, match_state = match_identity(mean_emb)
+                            (
+                                name,
+                                best_name,
+                                best_sim,
+                                second_sim,
+                                sim_margin,
+                                id_accept_th,
+                                match_state,
+                            ) = match_identity(mean_emb)
+
+                            if ENABLE_MATCH_SCORE_LOGS and (frame_now - last_match_log_ts) >= MATCH_LOG_INTERVAL_SEC:
+                                print(
+                                    f"[MATCH] state={match_state} cand={best_name} sim={best_sim:.3f} "
+                                    f"second={second_sim:.3f} margin={sim_margin:.3f} "
+                                    f"accept={id_accept_th:.3f} uncertain={SIM_UNCERTAIN_TH:.3f}"
+                                )
+                                last_match_log_ts = frame_now
 
                             if match_state == "CONFIDENT":
                                 if name == last_confident_name:
@@ -1359,6 +2180,8 @@ def inference_worker():
                                 else:
                                     last_confident_name = name
                                     consecutive_id_hits = 1
+                                if consecutive_id_hits > RECOG_SKIP_AFTER_ID_HITS:
+                                    recog_skip_until = frame_counter + RECOG_STABLE_SKIP_FRAMES
 
                                 if consecutive_id_hits >= ID_CONFIRM_FRAMES:
                                     name_show = name
@@ -1368,6 +2191,7 @@ def inference_worker():
                                 name_show = "UNKNOWN"
                                 last_confident_name = None
                                 consecutive_id_hits = 0
+                                recog_skip_until = -1
                         else:
                             name_show = "UNKNOWN"
                     else:
@@ -1390,9 +2214,14 @@ def inference_worker():
                     update_lcd("Verifying...\nPlease Hold")
                 else:
                     if label == "SPOOF":
-                        update_lcd("Spoof Detected\nAccess Denied")
-                        display_lock_until = now + 2.0
-                        verification_start = 0.0
+                        if reason.startswith("STABILIZE") or reason in ("OVEREXPOSED", "UNDEREXPOSED", "FACE ROI"):
+                            update_lcd("Adjust Lighting\nPlease Hold")
+                        elif reason in ("BLUR", "TOO FAR", "TOO CLOSE"):
+                            update_lcd("Hold Still\nFace Centered")
+                        else:
+                            update_lcd("Spoof Detected\nAccess Denied")
+                            display_lock_until = now + 2.0
+                            verification_start = 0.0
 
                     elif label == "LIVE":
                         name_text = str(name_show)
@@ -1427,16 +2256,86 @@ def inference_worker():
         else:
             current_fps_to_show = 0
 
-        with state_lock:
-            inference_state.update({
-                "box": current_box,
-                "label": label,
-                "name": name_show,
-                "reason": reason,
-                "votes": f"{live_votes}/{len(vote_buf)}",
-                "fps_display": current_fps_to_show,
-                "low_light": is_low_light,
-            })
+        if (now - last_adapt_ts) >= ADAPTIVE_TUNING_INTERVAL_SEC:
+            prev_strides = (liveness_stride, recog_stride)
+            if current_fps_to_show > 0:
+                if current_fps_to_show < ADAPT_FPS_LOW:
+                    adapt_low_hits += 1
+                    adapt_high_hits = 0
+                    low_hits_needed = 1 if current_fps_to_show <= (ADAPT_FPS_LOW - ADAPT_SEVERE_LOW_DELTA) else ADAPT_STABLE_HITS
+                    if adapt_low_hits >= low_hits_needed:
+                        liveness_stride = min(LIVENESS_EVERY_N_MAX, liveness_stride + 1)
+                        recog_stride = min(RECOG_EVERY_N_MAX, recog_stride + 1)
+                        adapt_low_hits = 0
+                elif current_fps_to_show > ADAPT_FPS_HIGH:
+                    adapt_high_hits += 1
+                    adapt_low_hits = 0
+                    high_hits_needed = 1 if current_fps_to_show >= (ADAPT_FPS_HIGH + ADAPT_SEVERE_HIGH_DELTA) else ADAPT_STABLE_HITS
+                    if adapt_high_hits >= high_hits_needed:
+                        liveness_stride = max(LIVENESS_EVERY_N_MIN, liveness_stride - 1)
+                        recog_stride = max(RECOG_EVERY_N_MIN, recog_stride - 1)
+                        adapt_high_hits = 0
+                else:
+                    adapt_low_hits = 0
+                    adapt_high_hits = 0
+            else:
+                adapt_low_hits = 0
+                adapt_high_hits = 0
+
+            if prev_strides != (liveness_stride, recog_stride):
+                runtime_debug_log(
+                    f"[ADAPT] fps={current_fps_to_show} detN={detector_stride} "
+                    f"liveN={liveness_stride} recogN={recog_stride}"
+                )
+            last_adapt_ts = now
+
+        perf_frames += 1
+        if (now - npu_timing_last_log_ts) >= NPU_TIMING_LOG_INTERVAL_SEC:
+            face_avg_ms = (face_infer_time_sum * 1000.0 / face_infer_count) if face_infer_count else 0.0
+            live_avg_ms = (live_infer_time_sum * 1000.0 / live_infer_count) if live_infer_count else 0.0
+            recog_avg_ms = (recog_infer_time_sum * 1000.0 / recog_infer_count) if recog_infer_count else 0.0
+            print(
+                f"[NPU CHECK] face={face_avg_ms:.2f}ms live={live_avg_ms:.2f}ms recog={recog_avg_ms:.2f}ms"
+            )
+            if max(face_avg_ms, live_avg_ms, recog_avg_ms) >= NPU_INFERENCE_WARN_MS:
+                print("If inference time is high → likely CPU fallback")
+
+            npu_timing_last_log_ts = now
+            face_infer_time_sum = 0.0
+            face_infer_count = 0
+            live_infer_time_sum = 0.0
+            live_infer_count = 0
+            recog_infer_time_sum = 0.0
+            recog_infer_count = 0
+
+        if ENABLE_LIGHTWEIGHT_PROFILING and (now - perf_last_log_ts) >= PERF_LOG_INTERVAL_SEC:
+            elapsed = max(1e-6, now - perf_last_log_ts)
+            n = max(1, perf_frames)
+            print(
+                f"[PERF] fps={current_fps_to_show} detN={detector_stride} liveN={liveness_stride} recN={recog_stride} "
+                f"gray={perf_t_gray / n * 1000.0:.2f}ms flash={perf_t_flash / n * 1000.0:.2f}ms "
+                f"det={perf_t_detect / n * 1000.0:.2f}ms live={perf_t_live / n * 1000.0:.2f}ms "
+                f"rec={perf_t_recog / n * 1000.0:.2f}ms loop={n / elapsed:.1f}Hz"
+            )
+            perf_last_log_ts = now
+            perf_frames = 0
+            perf_t_gray = 0.0
+            perf_t_flash = 0.0
+            perf_t_detect = 0.0
+            perf_t_live = 0.0
+            perf_t_recog = 0.0
+
+        if frame_counter % STATE_PUBLISH_EVERY_N == 0 or current_box is None:
+            with state_lock:
+                inference_state.update({
+                    "box": current_box,
+                    "label": label,
+                    "name": name_show,
+                    "reason": reason,
+                    "votes": f"{live_votes}/{len(vote_buf)}",
+                    "fps_display": current_fps_to_show,
+                    "low_light": is_low_light,
+                })
 Thread(target=inference_worker, daemon=True).start()
 
 # ==================================================
@@ -1446,6 +2345,7 @@ root = tk.Tk()
 root.title("EdgeID Attendance System")
 lbl = tk.Label(root, bg="black")
 lbl.pack()
+last_gui_frame_id = -1
 
 def on_close():
     global inference_running
@@ -1466,10 +2366,11 @@ def on_close():
     root.destroy()
 
 def update_gui():
+    global last_gui_frame_id
     if not inference_running:
         return
 
-    frame = cam.read(copy_frame=True)
+    frame, last_gui_frame_id = cam.read_if_new(last_gui_frame_id, copy_frame=True)
     if frame is not None:
         with state_lock:
             s = inference_state.copy()
@@ -1506,6 +2407,3 @@ def update_gui():
 root.protocol("WM_DELETE_WINDOW", on_close)
 update_gui()
 root.mainloop()
-
-
-
