@@ -18,13 +18,14 @@ from queue import Queue, Full, Empty
 # ==================================================
 # PATHS & CONSTANTS
 # ==================================================
-FACE_MODEL_PATH = r"D:\Major Project\models\model.onnx"
-LIVENESS_MODEL_PATH = r"D:\Major Project\models\best_model_npu_final.onnx"
-RECOG_MODEL_PATH = r"D:\Major Project\models\w600k_mbf.onnx"
-FACE_DB_PKL = r"D:\Major Project\face_db.pkl"
-FACES_DATASET_PATH = r"D:\Major Project\Faces"
-DB_NAME = r"D:\Major Project\attendance.db"
-DB_FALLBACK_NAME = r"D:\Major Project\attendance_runtime.db"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FACE_MODEL_PATH = os.path.join(BASE_DIR, "models", "model.onnx")
+LIVENESS_MODEL_PATH = os.path.join(BASE_DIR, "models", "best_model_npu_final.onnx")
+RECOG_MODEL_PATH = os.path.join(BASE_DIR, "models", "w600k_mbf.onnx")
+FACE_DB_PKL = os.path.join(BASE_DIR, "face_db.pkl")
+FACES_DATASET_PATH = os.path.join(BASE_DIR, "Faces")
+DB_NAME = os.path.join(BASE_DIR, "attendance.db")
+DB_FALLBACK_NAME = os.path.join(BASE_DIR, "attendance_runtime.db")
 DB_MEMORY_URI = "file:edgeid_runtime?mode=memory&cache=shared"
 ATTENDANCE_DATE_FORMAT = "%d %b %Y"
 ATTENDANCE_DEFAULT_SESSION = "Daily"

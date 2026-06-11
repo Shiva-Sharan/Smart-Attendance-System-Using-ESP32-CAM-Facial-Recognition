@@ -1,301 +1,216 @@
-## 📖 Introduction
+# 👁️ Smart Attendance System with AI Facial Recognition & ESP32-CAM
 
-Attendance management is an important process in educational institutions and organizations to monitor the presence of individuals. Traditional methods such as manual registers, RFID cards, and biometric systems have several drawbacks like time consumption, human errors, and chances of proxy attendance.
+[![Python](https://img.shields.io/badge/Python-3.13-blue.svg?style=for-the-badge&logo=python)](https://www.python.org/)
+[![OpenCV](https://img.shields.io/badge/OpenCV-Computer_Vision-red.svg?style=for-the-badge&logo=opencv)](https://opencv.org/)
+[![IoT](https://img.shields.io/badge/IoT-ESP32--CAM-yellow.svg?style=for-the-badge&logo=espressif)](https://www.espressif.com/)
+[![ONNX](https://img.shields.io/badge/ONNX-AI_Inference-blueviolet.svg?style=for-the-badge&logo=onnx)](https://onnx.ai/)
+[![MQTT](https://img.shields.io/badge/MQTT-Protocol-purple.svg?style=for-the-badge)](https://mqtt.org/)
 
-To solve these problems, this project presents a **Smart Attendance System using Facial Recognition**. The system uses an ESP32-CAM module to capture real-time video and a Python-based Artificial Intelligence model to detect and recognize faces.
+> **A production-grade Internet of Things (IoT) and Computer Vision solution featuring real-time facial recognition, anti-spoofing liveness detection, and automated database logging, integrated with an ESP32-CAM surveillance module.**
 
-In addition, the system includes **liveness detection**, which ensures that the detected face belongs to a real person and not a photo or video. This improves the security of the system and prevents fake attendance.
+### 🎥 [Watch the Project Demo Video](https://drive.google.com/file/d/1XTi2sku-xXh-D-Gfc53ZzSrhLwu0CHmJ/view?usp=sharing)
 
-Once a person is recognized, the attendance is automatically recorded in a database along with date and time. The system also provides real-time feedback through an LCD display and allows users to view attendance records using a web-based dashboard.
+---
 
-By combining Artificial Intelligence, IoT, and Web technologies, the system provides a **contactless, accurate, and efficient attendance solution**, suitable for real-world applications like classrooms, offices, and organizations.
+## 📋 Table of Contents
 
---
+- [Project Overview](#-project-overview)
+- [Problem Statement](#-problem-statement)
+- [System Architecture](#-system-architecture)
+- [Core Features](#-core-features)
+- [Technology Stack](#-technology-stack)
+- [Hardware Components](#-hardware-components)
+- [Execution Flow](#-execution-flow)
+- [Repository Structure](#-repository-structure)
+- [Installation & Setup](#-installation--setup)
+- [Dashboard & Outputs](#-dashboard--outputs)
+- [Challenges Solved](#-challenges-solved)
+- [Future Enhancements](#-future-enhancements)
 
-## 📁 Project Structure
+---
 
-The project is organized in a structured way to separate code, hardware, models, and documentation for better understanding and maintenance.
+## 🎯 Project Overview
 
-```id="k2x9p1"
-Smart_Attendance_System_Using_Facial_Recognition/
+This repository implements an **Enterprise-Scale Smart Surveillance & Access Control System**. Using an ESP32-CAM as a remote wireless IP camera, the system streams high-performance video to a Python-based Artificial Intelligence inference server. 
+
+The AI engine rapidly detects faces, applies advanced Anti-Spoofing (Liveness) models to block static photos or videos, and matches identities against an optimized embedding database. Successful recognitions are securely logged into a SQLite database, broadcasted to a physical LCD via MQTT, and visualized on an intuitive web dashboard.
+
+---
+
+## 💼 Problem Statement
+
+Traditional attendance and access control systems (e.g., RFID, manual registers, biometric fingerprint scanners) suffer from critical vulnerabilities:
+- **Proxy Attendance**: Easily bypassed using shared ID cards.
+- **Hygiene & Wear**: Contact-based fingerprint systems degrade and pose health risks.
+- **Lack of Verification**: Simple facial recognition can be spoofed by presenting a high-resolution photograph.
+
+**The Solution:** Build a robust, contactless, and spoof-resistant AI vision pipeline distributed between edge hardware (ESP32) and a centralized inference engine, ensuring maximum security and zero-friction tracking.
+
+---
+
+## 🏛️ System Architecture
+
+The architecture relies on a highly decoupled IoT pattern:
+
+![System Architecture Diagram](assets/architecture.png)
+
+1. **Edge Vision**: `ESP32-CAM` captures and streams video over HTTP.
+2. **AI Inference Layer**: Python server retrieves the stream, runs Face Detection, Liveness Validation, and Identity Matching via ONNX Runtime.
+3. **Data Layer**: Attendance events are committed to a fast, localized SQLite Database.
+4. **Hardware Feedback**: Successful logs trigger an MQTT payload delivered to a secondary ESP32 connected to an LCD display.
+5. **Analytics Dashboard**: A FastAPI/Flask application queries the database to serve real-time dashboard analytics to administrators.
+
+---
+
+## ✨ Core Features
+
+| Feature | Description |
+|---|---|
+| **Facial Recognition** | High-accuracy ONNX models for rapid identity embedding and matching. |
+| **Anti-Spoof Liveness** | Deep learning validation to block 2D image/video proxy attempts. |
+| **Edge IoT Integration** | Completely wireless IP camera streaming via ESP32-CAM. |
+| **MQTT Communication** | Asynchronous hardware feedback to remote LCD displays. |
+| **Automated DB Logging** | Real-time attendance state transitions stored in SQLite. |
+| **Interactive Dashboard** | Web-based UI to monitor employee/student attendance metrics. |
+
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technologies |
+|---|---|
+| **AI / Machine Learning** | Python, OpenCV, ONNX Runtime, NumPy |
+| **Embedded / IoT** | C++, Arduino Core, MQTT (PubSubClient) |
+| **Backend & Web** | FastAPI / Flask, HTML/CSS/JS |
+| **Database** | SQLite3 |
+
+---
+
+## 📡 Hardware Components
+
+- **ESP32-CAM Module**: Primary wireless vision sensor (OV2640).
+- **ESP32 Development Board**: Secondary node for MQTT subscription and display.
+- **16x2 I2C LCD Display**: Provides real-time physical confirmation.
+- **FTDI Programmer**: For flashing embedded C++ code.
+- **5V Power Supply**: Stable voltage source for uninterrupted streaming.
+
+---
+
+## 🔄 Execution Flow
+
+1. **Initialization**: The AI server spins up, pre-loading the ONNX models into memory to reduce inference latency.
+2. **Stream Acquisition**: A persistent HTTP connection pulls JPEG chunks from the ESP32-CAM.
+3. **Pipeline Processing**: 
+   - `Face Detection` extracts the bounding box.
+   - `Liveness Detection` evaluates the crop for 3D depth/texture anomalies.
+   - `Recognition` generates a 512-d embedding and calculates cosine similarity against the `face_db.pkl`.
+4. **Commit & Broadcast**: Upon exceeding the confidence threshold, the user is marked 'Present' in SQLite, and an MQTT message (`"Welcome [Name]"`) is published to the LCD topic.
+
+---
+
+## 📁 Repository Structure
+
+```text
+Smart_Attendance_System/
 │
-├── README.md                      # Project documentation
+├── src/                          # Core AI and processing logic
+│   └── attendance_system.py      # Main inference and pipeline runner
+│
+├── hardware/                     # Embedded C++ Code
+│   ├── cam_code.ino              # ESP32-CAM streaming server
+│   ├── Lcd_code.ino              # ESP32 MQTT subscriber and LCD driver
+│   └── hotspot.ino               # Alternative AP setup
+│
+├── dashboard/                    # Web Application UI
+│   ├── app.py                    # Web server routing
+│   ├── static/                   # CSS/JS assets
+│   └── templates/                # HTML Jinja templates
+│
+├── scripts/                      # DB and Model Utilities
+│   ├── db_creation.py            # SQLite schema initialization
+│   └── build_face_db_esp32_raw.py# Face embedding enrollment script
+│
+├── models/                       # Pre-trained ONNX Models
+├── assets/                       # Images and Architecture diagrams
 ├── requirements.txt              # Python dependencies
-│
-├── main/                         # Main Python system
-│   ├── main.py
-│   ├── data.py
-│   ├── utils.py
-│
-├── models/                       # AI Models
-│   ├── best.pt
-│   ├── face_detection.onnx
-│   ├── face_recognition.onnx
-│
-├── database/                     # Attendance Database
-│   └── attendance.db
-│
-├── esp32_code/                   # ESP32-CAM Code
-│   └── esp32_cam.ino
-|   └── esp332_Lcd.ino
-│
-├── web_app/                      # Web Dashboard
-│   ├── app.py
-│   ├── templates/
-│   ├── static/
-│
-├── images/                       # Project Images (from PDF)
-│   ├── architecture.png
-│   ├── block_diagram.png
-│   ├── workflow.png
-│   ├── dashboard.png
-│   ├── final_output.png
-
-
-### 📌 Explanation:
-
-* `main/` → Python AI system (face detection + recognition)
-* `models/` → YOLO / ONNX models
-* `database/` → attendance storage
-* `esp32_code/` → hardware code
-* `web_app/` → dashboard (FastAPI)
-* `images/` → diagrams from project report
-* `report/` → final PDF
-* `output/` → results & screenshots
-
-This structure makes the project easy to understand, run, and present professionally on GitHub.
+└── README.md                     # Project documentation
 ```
 
-## 🎯 Objective
+---
 
-The main objective of this project are:
+## 🚀 Installation & Setup
 
-* To develop an automated attendance system using facial recognition
-* To eliminate proxy attendance using liveness detection
-* To capture real-time video using ESP32-CAM
-* To store attendance data in a database
-* To provide real-time feedback using LCD display
-* To develop a web dashboard for monitoring attendance
-* To create a secure and contactless system
+### 1. Hardware Flashing
+Flash `hardware/cam_code.ino` to your ESP32-CAM using an FTDI adapter. Update your WiFi credentials within the sketch. Note the assigned IP address from the Serial Monitor.
 
-## ⬇️ Method 1: Clone the Repository
-
-Follow these steps to download the project to your system using Git:
-
-1. Open Command Prompt / Terminal
-2. Run the following command:
-```
-git clone https://github.com/Shiva-Sharan/Smart_Attendance_System_Using_Facial_Recognition_with_ESP32-CAM.git
-```
-3. Move into the project folder:
-
-cd Smart_Attendance_System_Using_Facial_Recognition_with_ESP32-CAM
-
-Now the project is successfully downloaded to your system.
-
-## ⬇️ Method 2: Download as ZIP
-
-1. Open the GitHub repository
-2. Click on the **Code** button
-3. Select **Download ZIP**
-4. Extract the ZIP file on your system
-
-Now you can open the project folder and start working.
-
-## ▶️ Run the Project
-
-1. Install Python (if not installed)
-
-2. Install required libraries:
-
+### 2. Software Requirements
+Ensure Python 3.10+ is installed, then install dependencies:
+```bash
 pip install -r requirements.txt
+```
 
-3. Run the main file:
+### 3. Database & Enrollment
+Initialize the database and build your authorized face embeddings:
+```bash
+# Generate attendance.db
+python scripts/db_creation.py
 
-python main.py
+# Place employee photos inside a 'Faces/' directory and build embeddings
+python scripts/build_face_db_esp32_raw.py
+```
 
-4. Make sure:
+### 4. Execute the System
+Update the `ESP32_CAM_URL` in `src/attendance_system.py` with your device's IP, then launch:
+```bash
+python src/attendance_system.py
+```
 
-* ESP32-CAM is connected to WiFi
-* Correct IP address is used in the code
-
----
-
-### 🔹 Step 1: Create Database
-
-Run:
-
-python db_creation.py
-
-✔ This will create:
-
-* attendance.db
-* students table
-* attendance table
-
----
-
-### 🔹 Step 2: Prepare Dataset
-
-✔ Create a folder:
-Faces/
-
-✔ Inside it:
-Faces/
-├── 160722735077/
-│    ├── img1.jpg
-│    ├── img2.jpg
-├── 160722735086/
-│    ├── img1.jpg
-
-✔ Each folder name = student ID
+### 5. Launch Dashboard
+In a separate terminal, launch the reporting dashboard:
+```bash
+python dashboard/app.py
+```
+Navigate to `http://localhost:5000` to view logs.
 
 ---
 
-### 🔹 Step 3: Build Face Database
+## 📊 System Outputs & Dashboards
 
-Run:
+The system provides multiple interfaces for real-time monitoring and historical attendance tracking.
 
-python build_face_db_esp32_raw.py
+### Real-Time Inference Window
+*(System displaying bounding boxes, liveness validation, and names)*
+![Inference Output](assets/Output.png)
 
-✔ This will:
+### Web Dashboard
+*(Analytics view showing attendance logs)*
+![Web Dashboard](assets/Dashboard.png)
 
-* Detect faces from images
-* Apply alignment & quality check
-* Generate embeddings
-* Save as face_db.pkl
-
----
-
-### 🔹 Step 4: Setup ESP32
-
-✔ Upload:
-
-* cam_code.ino → ESP32-CAM
-* Lcd_code.ino → ESP32 LCD
-
-✔ Connect WiFi and note IP address
-
-✔ Update in code:
-ESP32_CAM_URL = "http://<your-ip>:8080/video"
+### Login Interface
+*(Secure authentication for dashboard access)*
+![Login Page](assets/Login_page.png)
 
 ---
 
-### 🔹 Step 5: Run Main System
+## 🛡️ Challenges Solved
 
-Run:
-
-python main.py
-
-✔ This will:
-
-* Capture video from ESP32
-* Detect face
-* Check liveness
-* Recognize person
-* Mark attendance
-* Send message to LCD (MQTT)
+- **Network Latency & Jitter**: Implemented multi-threaded, queue-based frame grabbing to decouple the camera's HTTP latency from the heavy ONNX inference loop, ensuring smooth processing.
+- **Lighting Variability**: Engineered dynamic auto-exposure handling and CLAHE histogram equalization to maintain recognition accuracy in poor lighting conditions.
+- **Inference Bottlenecks**: Applied strict frame skipping algorithms and motion-based cache-reuse to drastically reduce CPU load while maintaining tracking stability.
 
 ---
 
-### 🔹 Step 6: Run Web Dashboard
+## 🔮 Future Enhancements
 
-Run:
-
-python app.py
-
-✔ Open browser:
-http://localhost:5000
-
-✔ Login using:
-
-* ID = student ID
-* Password = same ID
-
-✔ View attendance dashboard
+- [ ] Transition from SQLite to PostgreSQL for multi-node scalability.
+- [ ] Implement Apache Kafka instead of MQTT for robust event-streaming and historical playback.
+- [ ] Containerize the Python AI Server using Docker for one-command deployment.
+- [ ] Add an Alerting module (Twilio/SMTP) for unrecognized, recurring faces (Intrusion Detection).
 
 ---
 
-## 🔁 System Flow
+<div align="center">
 
-1. ESP32 → sends video
-2. Python → detects face
-3. Liveness → check real person
-4. Recognition → identify person
-5. Database → store attendance
-6. MQTT → send to LCD
-7. Web App → display data
+**Built with Computer Vision · Designed for the Edge · Open for Contributions**
 
----
-
-## ✅ Final Output
-
-* Attendance automatically marked
-* LCD shows result
-* Web dashboard shows records
-
-## 🧩 Components Used
-
-### 🔹 Hardware
-
-* ESP32-CAM
-* ESP32 (for LCD)
-* 16x2 LCD Display
-* Power Supply
-
-### 🔹 Software
-
-* Python
-* OpenCV
-* ONNX Runtime
-* FastAPI / Flask
-* SQLite Database
-* MQTT Protocol
-
-## 📸 Project Outputs
-
-### System Architecture
-
-![Architecture](Images/Flowchart.png)
-
-### Block Diagram
-
-![Block Diagram](Images/Block_Diagram.png)
-
-### Workflow
-
-![Workflow](Images/Workflow.png)
-
-### LCD Output
-
-![Output](Images/Output.png)
-
-### Dashboard
-
-![Dashboard](Images/Dashboard.png)
-
-### Login Page
-
-![Login](Images/Login_page.png)
-
-## 🏁 Conclusion
-
-This project successfully demonstrates the implementation of a **Smart Attendance System using Facial Recognition with ESP32-CAM**. By integrating Artificial Intelligence, IoT, and Web technologies, the system provides an efficient, secure, and contactless solution for attendance management.
-
-The use of **liveness detection** ensures that only real individuals are marked present, eliminating proxy attendance. The system also offers real-time feedback through an LCD display and a web-based dashboard for easy monitoring.
-
-Overall, this project highlights the practical application of modern technologies in solving real-world problems and improving accuracy, efficiency, and security in attendance systems.
-
----
-
-## 📜 Declaration
-
-I hereby declare that this project titled **"Smart Attendance System using Facial Recognition with ESP32-CAM"** is an original work carried out by me as part of my academic project. All the sources of information and references used have been duly acknowledged.
-
-
----
-
-## 📌 Note
-
-For complete implementation details, source code, and documentation, please refer to this GitHub repository.
-
+</div>

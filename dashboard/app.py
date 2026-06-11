@@ -6,8 +6,9 @@ from threading import Lock
 from flask import Flask, g, jsonify, redirect, render_template, request, session
 from werkzeug.security import check_password_hash
 
-DB_FILE = r"D:\Major Project\attendance.db"
-DB_FALLBACK_FILE = r"D:\Major Project\attendance_runtime.db"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_FILE = os.path.join(BASE_DIR, "attendance.db")
+DB_FALLBACK_FILE = os.path.join(BASE_DIR, "attendance_runtime.db")
 DB_MEMORY_URI = "file:edgeid_web_runtime?mode=memory&cache=shared"
 ATTENDANCE_DATE_FORMAT = "%d %b %Y"
 ATTENDANCE_DEFAULT_SESSION = "Daily"

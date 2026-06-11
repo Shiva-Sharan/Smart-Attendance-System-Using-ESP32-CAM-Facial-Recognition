@@ -12,7 +12,7 @@ import onnxruntime as ort
 # ==================================================
 # DEFAULT PATHS
 # ==================================================
-PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_DATASET_PATH = os.path.join(PROJECT_ROOT, "Faces")
 DEFAULT_DET_MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "model.onnx")
 DEFAULT_RECOG_MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "w600k_mbf.onnx")
